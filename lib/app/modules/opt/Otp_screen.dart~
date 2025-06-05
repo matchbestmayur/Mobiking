@@ -1,0 +1,150 @@
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:get/get_core/src/get_main.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:mobiking/app/modules/home/home_screen.dart';
+import 'package:pin_code_fields/pin_code_fields.dart';
+import 'package:mobiking/app/themes/app_theme.dart';
+
+class OtpVerificationScreen extends StatefulWidget {
+  final String phoneNumber;
+
+  const OtpVerificationScreen({super.key, required this.phoneNumber});
+
+  @override
+  State<OtpVerificationScreen> createState() => _OtpVerificationScreenState();
+}
+
+class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
+  TextEditingController otpController = TextEditingController();
+  bool isLoading = false;
+
+  void _verifyOtp() {
+    String otp = otpController.text.trim();
+    if (otp.length == 6) {
+      setState(() => isLoading = true);
+
+      
+      Future.delayed(const Duration(seconds: 2), () {
+        setState(() => isLoading = false);
+        print('OTP Submitted: $otp');
+        Get.to(HomeScreen());
+        // Navigate or show success
+      });
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter 6-digit OTP')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.neutralBackground,
+      body: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            const SizedBox(height: 80),
+
+            Text(
+              "Verify OTP",
+              style: GoogleFonts.poppins(
+                fontSize: 26,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textDark,
+              ),
+            ),
+            const SizedBox(height: 8),
+
+            Text(
+              "Enter the 6-digit code sent to ${widget.phoneNumber}",
+              textAlign: TextAlign.center,
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                color: Colors.grey,
+              ),
+            ),
+            const SizedBox(height: 40),
+
+            // OTP Input
+            PinCodeTextField(
+              controller: otpController,
+              appContext: context,
+              length: 6,
+              obscureText: false,
+              keyboardType: TextInputType.number,
+              animationType: AnimationType.fade,
+              pinTheme: PinTheme(
+                shape: PinCodeFieldShape.box,
+                borderRadius: BorderRadius.circular(12),
+                fieldHeight: 50,
+                fieldWidth: 45,
+                activeColor: Colors.deepPurpleAccent,
+                selectedColor: Colors.deepPurple,
+                inactiveColor: Colors.grey,
+                activeFillColor: Colors.white,
+                selectedFillColor: Colors.white,
+                inactiveFillColor: Colors.white,
+              ),
+              animationDuration: const Duration(milliseconds: 300),
+              enableActiveFill: true,
+              onCompleted: (v) => _verifyOtp(),
+              onChanged: (value) {},
+            ),
+
+            const SizedBox(height: 24),
+
+            // Submit Button
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: isLoading ? null : _verifyOtp,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.deepPurpleAccent,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: isLoading
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : Text(
+                  "Verify",
+                  style: GoogleFonts.poppins(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // Resend prompt
+            Text(
+              "Didn't receive the code?",
+              style: GoogleFonts.poppins(color: Colors.grey),
+            ),
+            TextButton(
+              onPressed: () {
+                // TODO: Handle resend OTP
+                print("Resend OTP tapped");
+              },
+              child: Text(
+                "Resend OTP",
+                style: GoogleFonts.poppins(
+                  color: Colors.deepPurpleAccent,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            )
+          ],
+        ),
+      ),
+    );
+  }
+}
