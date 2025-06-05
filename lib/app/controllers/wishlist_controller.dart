@@ -27,7 +27,7 @@ class WishlistController extends GetxController {
       'Item removed from wishlist',
       snackPosition: SnackPosition.BOTTOM,
       backgroundColor: const Color(0xFFF44336), // red color
-      colorText: Colors.white,
+      colorText:Colors.white,
       margin: const EdgeInsets.all(12),
       duration: const Duration(seconds: 2),
     );
