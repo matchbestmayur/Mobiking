@@ -1,41 +1,50 @@
+import 'dart:convert';
+
+
 class AddressModel {
-  final String fullName;
-  final String phoneNumber;
-  final String street;
-  final String city;
-  final String state;
-  final String pinCode;
-  final String label;
+  String? id; 
+  String label;
+  String street;
+  String city;
+  String state;
+  String pinCode;
 
   AddressModel({
-    required this.fullName,
-    required this.phoneNumber,
+    this.id,
+    required this.label,
     required this.street,
     required this.city,
     required this.state,
     required this.pinCode,
-    required this.label,
   });
 
-  Map<String, dynamic> toJson() => {
-    'fullName': fullName,
-    'phoneNumber': phoneNumber,
-    'street': street,
-    'city': city,
-    'state': state,
-    'pinCode': pinCode,
-    'label': label,
-  };
-
+  
   factory AddressModel.fromJson(Map<String, dynamic> json) {
     return AddressModel(
-      fullName: json['fullName'],
-      phoneNumber: json['phoneNumber'],
-      street: json['street'],
-      city: json['city'],
-      state: json['state'],
-      pinCode: json['pinCode'],
-      label: json['label'],
+      id: json['_id'] as String?, 
+      label: json['label'] as String,
+      street: json['street'] as String,
+      city: json['city'] as String,
+      state: json['state'] as String,
+      pinCode: json['pinCode'] as String,
     );
+  }
+
+  
+  Map<String, dynamic> toJson() {
+    return {
+      'label': label,
+      'street': street,
+      'city': city,
+      'state': state,
+      'pinCode': pinCode,
+      
+      
+    };
+  }
+
+  @override
+  String toString() {
+    return 'AddressModel(id: $id, label: $label, street: $street, city: $city, state: $state, pinCode: $pinCode)';
   }
 }

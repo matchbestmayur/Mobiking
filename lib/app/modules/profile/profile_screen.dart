@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:get/get_core/src/get_main.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobiking/app/modules/address/AddressPage.dart';
 import 'package:mobiking/app/modules/policy/cancellation_policy.dart';
@@ -11,35 +10,22 @@ import 'package:mobiking/app/themes/app_theme.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../widgets/profile_reusable_widget.dart';
-import '../policy/logout_screen.dart';
+import '../orders/order_screen.dart' show OrderHistoryScreen;
+import '../policy/logout_screen.dart'; // Assuming showLogoutDialog is defined here
 import '../policy/privacy_policy.dart';
+import '../../controllers/login_controller.dart'; // Import your LoginController
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    // Get an instance of your LoginController
+    final LoginController loginController = Get.find<LoginController>();
+
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        surfaceTintColor: Colors.transparent,
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios),
-          onPressed: () {
-            Get.back();
-          },
-        ),
-        title: Text(
-          'Profile',
-          style: GoogleFonts.poppins(
-            fontWeight: FontWeight.w600,
-            fontSize: 20,
-            color: Colors.black87,
-          ),
-        ),
-      ),
+
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -58,38 +44,68 @@ class ProfileScreen extends StatelessWidget {
               const SizedBox(height: 8),
               Row(
                 children: [
-                  const Icon(Icons.email_outlined),
-                  const SizedBox(width: 8),
-                  Text(
-                    'xyz0111@gmail.com',
-                    style: GoogleFonts.poppins(
-                      fontWeight: FontWeight.w500, // medium weight
-                      fontSize: 14, // smaller font size for subtlety
-                      decoration: TextDecoration.underline,
-                      color: Colors.black87,
-                    ),
-                  ),
+                  Obx(() {
+                    // 1. Get the current user data from the observable in the controller
+                    final userMap = loginController.currentUser.value;
+
+                    // 2. Initialize default display values
+                    String displayText = 'N/A';
+                    IconData displayIcon = Icons.person_outline; // Default generic icon if neither email nor phone is found
+
+                    // 3. Check if user data exists
+                    if (userMap != null) {
+                      // 4. Safely extract email and phoneNumber from the userMap
+                      final String? email = userMap['email'] as String?;
+                      final String? phoneNumber = userMap['phoneNo'] as String?; // Key from your backend response
+
+                      // 5. Apply the logic: Prefer email, then phone, else default
+                      if (email?.isNotEmpty == true) { // If email exists and is not empty
+                        displayText = email!; // Use email as text
+                        displayIcon = Icons.email_outlined; // Use email icon
+                      } else if (phoneNumber?.isNotEmpty == true) { // Else if phone number exists and is not empty
+                        displayText = phoneNumber!; // Use phone number as text
+                        displayIcon = Icons.phone_outlined; // Use phone icon
+                      }
+                    }
+
+                    // 6. Return the Row with the dynamically chosen icon and text
+                    return Row(
+                      children: [
+                        Icon(displayIcon), // Display the chosen icon based on the logic
+                        const SizedBox(width: 8),
+                        Text(
+                          displayText, // Display the chosen text based on the logic
+                          style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.w500,
+                            fontSize: 14,
+                            decoration: TextDecoration.underline,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ],
+                    );
+                  }),
                 ],
               ),
               const SizedBox(height: 24),
 
-              // Top 3 Boxes
+              // Top 3 Boxes (unchanged)
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   InfoBox(icon: Icons.headset_mic_outlined, title: 'Support',
                     onPressed: (){
-                    Get.back();
-                  },),
+                      Get.back();
+                    },),
                   InfoBox(icon: Icons.payment_outlined, title: 'Payment'
-                  ,onPressed: (){
+                      ,onPressed: (){
                         Get.back();
                       }),
-                   InfoBox(icon: Icons.info_outline, title: 'About Us'
+                  InfoBox(icon: Icons.info_outline, title: 'About Us'
                       , onPressed: (){
-        Get.back();
-        }
-                   ),
+                        Get.back();
+                      }
+                  ),
                 ],
               ),
 
@@ -106,12 +122,18 @@ class ProfileScreen extends StatelessWidget {
 
               const SizedBox(height: 16),
 
-              // Info List
+           /*   // Info List (added navigation to OrderHistoryScreen for 'Your orders')
               ProfileListTile(
                 icon: Icons.receipt_long,
                 title: 'Your orders',
-                onTap: (){},
-              ),
+                onTap: () {
+                  Get.to(
+                    OrderHistoryScreen(), // Navigate to OrderHistoryScreen
+                    transition: Transition.rightToLeftWithFade,
+                    duration: const Duration(milliseconds: 300),
+                  );
+                },
+              ),*/
               ProfileListTile(
                 icon: Icons.favorite_border_outlined,
                 title: 'Wishlist',
@@ -139,46 +161,46 @@ class ProfileScreen extends StatelessWidget {
               ProfileListTile(
                 icon: Icons.privacy_tip_outlined,
                 title: 'Privacy Policy',
-                 onTap: () {
-                   Get.to(
-                     const PrivacyPolicyScreen(),
-                     transition: Transition.rightToLeftWithFade, // or use Transition.rightToLeft
-                     duration: const Duration(milliseconds: 300), // optional for smoothness
-                   );
-                 },
-               ),
-               ProfileListTile(
+                onTap: () {
+                  Get.to(
+                    const PrivacyPolicyScreen(),
+                    transition: Transition.rightToLeftWithFade, // or use Transition.rightToLeft
+                    duration: const Duration(milliseconds: 300), // optional for smoothness
+                  );
+                },
+              ),
+              ProfileListTile(
                 icon: Icons.article_outlined,
                 title: 'Terms & Conditions',
-                 onTap: () {
-                   Get.to(
-                     const TermsAndConditionsScreen(),
-                     transition: Transition.rightToLeftWithFade, // or use Transition.rightToLeft
-                     duration: const Duration(milliseconds: 300), // optional for smoothness
-                   );
-                 },
+                onTap: () {
+                  Get.to(
+                    const TermsAndConditionsScreen(),
+                    transition: Transition.rightToLeftWithFade, // or use Transition.rightToLeft
+                    duration: const Duration(milliseconds: 300), // optional for smoothness
+                  );
+                },
               ),
-               ProfileListTile(
+              ProfileListTile(
                 icon: Icons.cancel_outlined,
                 title: 'Cancellation Policy',
-                 onTap: (){
-                   Get.to(
-                     const CancellationPolicyScreen(),
-                     transition: Transition.rightToLeftWithFade, // or use Transition.rightToLeft
-                     duration: const Duration(milliseconds: 300), // optional for smoothness
-                   );
-                 },
+                onTap: (){
+                  Get.to(
+                    const CancellationPolicyScreen(),
+                    transition: Transition.rightToLeftWithFade, // or use Transition.rightToLeft
+                    duration: const Duration(milliseconds: 300), // optional for smoothness
+                  );
+                },
               ),
-               ProfileListTile(
+              ProfileListTile(
                 icon: Icons.money_off_csred_outlined,
                 title: 'Refund Policy',
-                 onTap: (){
-                   Get.to(
-                     const RefundPolicyScreen(),
-                     transition: Transition.rightToLeftWithFade, // or use Transition.rightToLeft
-                     duration: const Duration(milliseconds: 300), // optional for smoothness
-                   );
-                 },
+                onTap: (){
+                  Get.to(
+                    const RefundPolicyScreen(),
+                    transition: Transition.rightToLeftWithFade, // or use Transition.rightToLeft
+                    duration: const Duration(milliseconds: 300), // optional for smoothness
+                  );
+                },
               ),
               ProfileListTile(
                 icon: Icons.share_outlined,
@@ -198,7 +220,7 @@ class ProfileScreen extends StatelessWidget {
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () {
-                    showLogoutDialog(context);
+                    loginController.logout();
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.success,

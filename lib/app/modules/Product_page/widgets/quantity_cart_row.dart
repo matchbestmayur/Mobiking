@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
+import 'package:mobiking/app/controllers/login_controller.dart';
 import '../../../controllers/cart_controller.dart';
 import '../../../themes/app_theme.dart';
 
 class QuantityAndCartRow extends StatelessWidget {
   const QuantityAndCartRow({Key? key}) : super(key: key);
 
+
   @override
   Widget build(BuildContext context) {
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -53,9 +57,14 @@ class QuantityAndCartRow extends StatelessWidget {
         ElevatedButton(
           onPressed: () {
             final cartController = Get.find<CartController>();
+             final box = GetStorage();
+              final userData = box.read('userData') ?? {};
+              final cartId = userData['cartId'] ?? '';
+
             cartController.addToCart(
               productId: '683e8aa4352ed33496cc8193',
               variantName: 'Raging Black',
+
             );
           },
           style: ElevatedButton.styleFrom(

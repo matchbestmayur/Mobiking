@@ -22,7 +22,7 @@ class CategoryService {
       final category = CategoryModel.fromJson(data); // `data` itself is the category
 
       final subCategories = (data['subCategories'] as List?)
-          ?.map((e) => SubCategoryModel.fromJson(e))
+          ?.map((e) => SubCategory.fromJson(e))
           .toList() ?? [];
 
       return {

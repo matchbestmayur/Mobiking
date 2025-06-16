@@ -13,10 +13,10 @@ class CategoryController extends GetxController {
   final CategoryService _service = CategoryService();
 
   var categories = <CategoryModel>[].obs;
-  var selectedCategory = Rxn<CategoryModel>(); // for category details
+  var selectedCategory = Rxn<CategoryModel>(); 
   var isLoading = false.obs;
 
-  // Fetch all categories
+  
   Future<void> fetchCategories() async {
     try {
       isLoading.value = true;
@@ -38,8 +38,8 @@ class CategoryController extends GetxController {
       isLoading.value = true;
       final response = await CategoryService.getCategoryDetails(slug);
       selectedCategory.value = response['category'] as CategoryModel;
-      // OR if you want to be safe:
-      // selectedCategory.value = CategoryModel.fromJson(response['category']);
+      
+      
     } catch (e) {
       Get.snackbar('Error', e.toString());
     } finally {

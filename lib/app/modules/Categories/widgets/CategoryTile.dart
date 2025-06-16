@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:mobiking/app/themes/app_theme.dart';
 
 class ProductTile extends StatelessWidget {
@@ -27,7 +28,7 @@ class ProductTile extends StatelessWidget {
               borderRadius: BorderRadius.circular(10),
               image: DecorationImage(
                 image: NetworkImage(imageUrl),
-                fit: BoxFit.cover,
+                fit: BoxFit.fill,
               ),
             ),
           ),
@@ -35,7 +36,7 @@ class ProductTile extends StatelessWidget {
           Text(
             title,
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 12),
+            style:  GoogleFonts.poppins(fontSize: 12),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),

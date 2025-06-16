@@ -44,11 +44,11 @@ class AppPages {
       page: () => HomeScreen(),
       binding: GroupBinding(),
     ),
-    GetPage(
+   /* GetPage(
       name: '/order',
       page: () => CartScreen(),
       binding: OrderBinding(),
-    ),
+    ),*/
     GetPage(
       name: '/product',
       page: () => ProfileScreen(),

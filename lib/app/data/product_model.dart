@@ -1,13 +1,31 @@
 class SellingPrice {
+  final String? id;
   final int price;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
 
-  SellingPrice({required this.price});
+  SellingPrice({
+    this.id,
+    required this.price,
+    this.createdAt,
+    this.updatedAt,
+  });
 
   factory SellingPrice.fromJson(Map<String, dynamic> json) {
-    return SellingPrice(price: json['price'] ?? 0);
+    return SellingPrice(
+      id: json['_id'] as String?,
+      price: json['price'] ?? 0,
+      createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : null,
+      updatedAt: json['updatedAt'] != null ? DateTime.parse(json['updatedAt']) : null,
+    );
   }
 
-  Map<String, dynamic> toJson() => {'price': price};
+  Map<String, dynamic> toJson() => {
+    if (id != null) '_id': id,
+    'price': price,
+    if (createdAt != null) 'createdAt': createdAt!.toIso8601String(),
+    if (updatedAt != null) 'updatedAt': updatedAt!.toIso8601String(),
+  };
 }
 
 class ProductModel {
@@ -48,7 +66,7 @@ class ProductModel {
     required this.groupIds,
     required this.totalStock,
     required this.variants,
-        required this.images,
+    required this.images,
   });
 
   factory ProductModel.fromJson(Map<String, dynamic> json) {
@@ -63,10 +81,12 @@ class ProductModel {
       liked: json['liked'] ?? false,
       bestSeller: json['bestSeller'] ?? false,
       recommended: json['recommended'] ?? false,
-      sellingPrice: (json['sellingPrice'] as List<dynamic>)
+      sellingPrice: (json['sellingPrice'] as List<dynamic>? ?? [])
           .map((e) => SellingPrice.fromJson(e))
           .toList(),
-      categoryId: json['category'] ?? '',
+      categoryId: (json['category'] is Map && json['category'] != null)
+          ? json['category']['_id'] ?? ''
+          : (json['category'] is String ? json['category'] : ''),
       images: List<String>.from(json['images'] ?? []),
       stockIds: List<String>.from((json['stock'] ?? []).map((e) => e.toString())),
       orderIds: List<String>.from((json['orders'] ?? []).map((e) => e.toString())),
@@ -75,6 +95,7 @@ class ProductModel {
       variants: Map<String, int>.from(json['variants']?.map((key, value) => MapEntry(key, value as int)) ?? {}),
     );
   }
+
 
   Map<String, dynamic> toJson() {
     return {
@@ -90,7 +111,7 @@ class ProductModel {
       'recommended': recommended,
       'sellingPrice': sellingPrice.map((e) => e.toJson()).toList(),
       'categoryId': categoryId,
-            'images': images,
+      'images': images,
       'stockIds': stockIds,
       'orderIds': orderIds,
       'groupIds': groupIds,

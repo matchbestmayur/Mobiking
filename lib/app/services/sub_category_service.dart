@@ -1,38 +1,51 @@
-import 'package:dio/dio.dart';
-
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import '../data/sub_category_model.dart';
 
-
 class SubCategoryService {
- /* final Dio _dio = Dio(BaseOptions(baseUrl: 'http://your-api-url.com'));*/
+  final String baseUrl = 'https://mobiking-e-commerce-backend.vercel.app/api/v1/categories/';
 
-  Dio _dio;
+  Future<List<SubCategory>> fetchSubCategories() async {
+    final url = Uri.parse('${baseUrl}subCategories');
 
-  SubCategoryService() : _dio = Dio(BaseOptions(baseUrl: 'http://your-api-url.com'));
+    final response = await http.get(url);
+    if (response.statusCode != 200) {
+      throw Exception('Failed to load subcategories: ${response.statusCode}');
+    }
 
-  // For testing purposes
-  void overrideDio(Dio dio) {
-    _dio = dio;
+    final decoded = json.decode(response.body);
+
+    // Extract list from either raw list or from 'data' field
+    final List<dynamic> list = (decoded is List) ? decoded : (decoded['data'] ?? []);
+    if (list.isEmpty) return [];
+
+    return list.map((e) {
+      if (e is Map<String, dynamic>) {
+        return SubCategory.fromJson(e);
+      }
+      throw FormatException('Invalid element type: ${e.runtimeType}');
+    }).toList();
   }
 
+  Future<SubCategory> createSubCategory(SubCategory model) async {
+    final url = Uri.parse('${baseUrl}subCategories');
 
-  Future<List<SubCategoryModel>> fetchSubCategories() async {
-    try {
-      final response = await _dio.get('/subcategories');
-      return (response.data as List)
-          .map((e) => SubCategoryModel.fromJson(e))
-          .toList();
-    } catch (e) {
-      throw Exception('Error fetching subcategories: $e');
-    }
-  }
+    final response = await http.post(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode(model.toJson()),
+    );
 
-  Future<SubCategoryModel> createSubCategory(SubCategoryModel model) async {
-    try {
-      final response = await _dio.post('/subcategories', data: model.toJson());
-      return SubCategoryModel.fromJson(response.data);
-    } catch (e) {
-      throw Exception('Error creating subcategory: $e');
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw Exception('Failed to create subcategory: ${response.statusCode}');
     }
+
+    final decoded = json.decode(response.body);
+
+    if (decoded is Map<String, dynamic> && decoded['data'] != null) {
+      return SubCategory.fromJson(decoded['data']);
+    }
+
+    throw FormatException('Unexpected response format');
   }
 }

@@ -12,7 +12,7 @@ class StockService {
   void overrideDio(Dio dio) {
     _dio = dio;
   }
-  /* final Dio _dio = Dio(BaseOptions(baseUrl: 'http://your-api-url.com'));*/
+
 
   Future<List<StockModel>> getAllStocks() async {
     try {

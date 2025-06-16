@@ -1,9 +1,13 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:mobiking/app/controllers/Home_controller.dart';
+
+import 'package:mobiking/app/controllers/sub_category_controller.dart';
 import 'package:mobiking/app/modules/home/home_screen.dart';
 
+import '../controllers/Home_controller.dart';
 import '../controllers/category_controller.dart';
 import '../data/product_model.dart';
 import '../dummy/products_data.dart';
@@ -72,16 +76,19 @@ class CustomTabBarSection extends StatelessWidget {
     return Obx(() {
       final categories = categoryController.categories;
 
-      // Wait until categories are loaded & check length for 3 tabs
+      // While loading categories, show full-screen loader
       if (categories.isEmpty || categories.length < tabIcons.length) {
-        return const Center(child: CircularProgressIndicator());
+        return const SizedBox.expand(
+          child: Center(
+            child: CircularProgressIndicator(color: Colors.greenAccent),
+          ),
+        );
       }
 
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: Container(
           decoration: BoxDecoration(
-            color: Colors.black,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Row(
@@ -96,11 +103,13 @@ class CustomTabBarSection extends StatelessWidget {
       );
     });
   }
+
 }
 class CustomTabBarViewSection extends StatelessWidget {
   final TabControllerGetX controller = Get.find<TabControllerGetX>();
   final CategoryController categoryController = Get.find<CategoryController>();
   final HomeController homeController = Get.find<HomeController>();
+  final SubCategoryController subCategoryController  = Get.find<SubCategoryController>();
 
   CustomTabBarViewSection({super.key});
 
@@ -111,33 +120,30 @@ class CustomTabBarViewSection extends StatelessWidget {
       final categories = categoryController.categories;
       final selectedIndex = controller.selectedIndex.value;
 
-      if (categories.isEmpty || selectedIndex >= categories.length) {
-        return const Center(child: CircularProgressIndicator());
-      }
+
 
       final selectedCategory = categories[selectedIndex];
-
       final homeData = homeController.homeData.value;
-      if (homeData == null || homeData.groups.isEmpty) {
-        return const Center(child: CircularProgressIndicator());
-      }
+      final groups = homeData?.groups ?? [];
+
+
 
       print("Categories: $categories");
       print("Selected Index: $selectedIndex");
       print("Selected Category ID: ${selectedCategory.id}");
       print("HomeData: ${homeData != null}");
-      print("Groups: ${homeData?.groups.map((e) => e.id)}");
-
+      print("Groups: ${groups.map((e) => e.id)}");
 
       return buildSectionView(
-        products: dummyProducts,
-        groups: homeData.groups,
-        bannerImageUrl: homeData.banners.isNotEmpty ? homeData.banners.first : '',
-      )
-      ;
+        groups: groups,
+        bannerImageUrl: selectedCategory.image ?? '',
+        categoryGridItems: subCategoryController.subCategories,
+        subCategories: subCategoryController.subCategories,
+      );
     });
   }
 }
+
 
 
 

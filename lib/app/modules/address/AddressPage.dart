@@ -1,93 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:get_storage/get_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-class AddressPage extends StatefulWidget {
-  const AddressPage({Key? key}) : super(key: key);
+import '../../controllers/address_controller.dart';
+import '../../data/AddressModel.dart';
 
-  @override
-  State<AddressPage> createState() => _AddressPageState();
-}
+class AddressPage extends StatelessWidget {
+  AddressPage({Key? key}) : super(key: key) {
+    Get.put(AddressController());
+  }
 
-class _AddressPageState extends State<AddressPage> {
-  final box = GetStorage();
+  final AddressController controller = Get.find<AddressController>();
 
-  // Form controllers
   final _formKey = GlobalKey<FormState>();
-  final fullNameController = TextEditingController();
-  final phoneNumberController = TextEditingController();
-  final streetController = TextEditingController();
-  final cityController = TextEditingController();
-  final stateController = TextEditingController();
-  final pinCodeController = TextEditingController();
-  final customLabelController = TextEditingController();
 
   final Color appDeepPurple = const Color(0xFF6B1EFF);
-  final RxString selectedLabel = 'Home'.obs;
-
-  // UI State: true = show form, false = show address list
-  final RxBool isAddingAddress = false.obs;
-
-  // Helper: get addresses from storage
-  List<Map<String, dynamic>> get addresses {
-    final List? stored = box.read<List>('addresses');
-    if (stored == null) return [];
-    return stored.cast<Map<String, dynamic>>();
-  }
-
-  // Save address
-  void saveAddress() {
-    if (!_formKey.currentState!.validate()) return;
-
-    final label = selectedLabel.value == 'Other'
-        ? (customLabelController.text.trim().isEmpty ? 'Other' : customLabelController.text.trim())
-        : selectedLabel.value;
-
-    final newAddress = {
-      'fullName': fullNameController.text.trim(),
-      'phoneNumber': phoneNumberController.text.trim(),
-      'street': streetController.text.trim(),
-      'city': cityController.text.trim(),
-      'state': stateController.text.trim(),
-      'pinCode': pinCodeController.text.trim(),
-      'label': label,
-    };
-
-    final currentAddresses = addresses;
-    currentAddresses.add(newAddress);
-    box.write('addresses', currentAddresses);
-
-    fullNameController.clear();
-    phoneNumberController.clear();
-    streetController.clear();
-    cityController.clear();
-    stateController.clear();
-    pinCodeController.clear();
-    customLabelController.clear();
-    selectedLabel.value = 'Home';
-    isAddingAddress.value = false;
-
-    Get.snackbar(
-      'Success',
-      'Address saved locally!',
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: Colors.green.shade600,
-      colorText: Colors.white,
-    );
-  }
-
-  @override
-  void dispose() {
-    fullNameController.dispose();
-    phoneNumberController.dispose();
-    streetController.dispose();
-    cityController.dispose();
-    stateController.dispose();
-    pinCodeController.dispose();
-    customLabelController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -100,17 +27,18 @@ class _AddressPageState extends State<AddressPage> {
         ),
         automaticallyImplyLeading: false,
         title: Text(
-          'Your Addresses',
+          'Manage Addresses',
           style: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: Colors.white),
         ),
         backgroundColor: appDeepPurple,
+        elevation: 1,
       ),
       floatingActionButton: Obx(() {
-        if (!isAddingAddress.value) {
+        if (!controller.isAddingAddress.value && !controller.isLoading.value) {
           return FloatingActionButton(
             backgroundColor: appDeepPurple,
             onPressed: () {
-              isAddingAddress.value = true;
+              controller.isAddingAddress.value = true;
             },
             child: const Icon(Icons.add, color: Colors.white),
           );
@@ -119,141 +47,204 @@ class _AddressPageState extends State<AddressPage> {
         }
       }),
       body: Obx(() {
-        if (isAddingAddress.value) {
-          return _buildForm();
-        } else {
-          final savedAddresses = addresses;
-          if (savedAddresses.isEmpty) {
-            return Center(
-              child: Text(
-                'No addresses saved yet.\nTap + to add one!',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.poppins(fontSize: 18, color: Colors.grey.shade700),
-              ),
-            );
-          } else {
-            return ListView.separated(
-              padding: const EdgeInsets.all(16),
-              itemCount: savedAddresses.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
-              itemBuilder: (_, index) {
-                final addr = savedAddresses[index];
-                return Card(
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  elevation: 3,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '${addr['label'].toString().toLowerCase() == 'home' ? '🏠' : addr['label'].toString().toLowerCase() == 'office' ? '🏢' : '🏷️'} ${addr['label']} - ${addr['fullName']}',
-                          style: GoogleFonts.poppins(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          '📍 ${addr['street']}, ${addr['city']}, ${addr['pinCode']}',
-                          style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey[700]),
-                        ),
-                      ],
-                    ),
+        if (controller.isAddingAddress.value) {
+          return _buildForm(context);
+        } else if (controller.isLoading.value && controller.addresses.isEmpty) {
+          return Center(
+            child: CircularProgressIndicator(color: appDeepPurple),
+          );
+        } else if (controller.addresses.isEmpty) {
+          
+          return RefreshIndicator( 
+            onRefresh: () async {
+              await controller.fetchAddresses(); 
+            },
+            color: appDeepPurple,
+            child: SingleChildScrollView( 
+              physics: const AlwaysScrollableScrollPhysics(), 
+              child: SizedBox( 
+                height: MediaQuery.of(context).size.height - AppBar().preferredSize.height - MediaQuery.of(context).padding.top, 
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.location_off_outlined, size: 60, color: Colors.grey.shade400),
+                      const SizedBox(height: 16),
+                      Text(
+                        'No addresses found.',
+                        style: GoogleFonts.poppins(fontSize: 18, color: Colors.grey.shade700),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Tap the + button to add your first address,',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey.shade600),
+                      ),
+                      Text(
+                        'or pull down to refresh.', 
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey.shade600),
+                      ),
+                    ],
                   ),
-                );
-              },
-            );
-          }
+                ),
+              ),
+            ),
+          );
+        } else {
+          return _buildAddressList();
         }
       }),
     );
   }
 
-  Widget _buildForm() {
+  
+  Widget _buildAddressList() {
+    return RefreshIndicator(
+      onRefresh: () async {
+        await controller.fetchAddresses();
+      },
+      color: appDeepPurple,
+      child: ListView.separated(
+        padding: const EdgeInsets.all(16),
+        itemCount: controller.addresses.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 12),
+        itemBuilder: (_, index) {
+          final AddressModel addr = controller.addresses[index];
+          final bool isSelected = controller.selectedAddress.value?.id == addr.id;
+
+          return GestureDetector(
+            onTap: () {
+              controller.selectAddress(addr);
+              Get.back();
+            },
+            child: Card(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: isSelected
+                    ? BorderSide(color: appDeepPurple, width: 2.0)
+                    : BorderSide(color: Colors.grey.shade300, width: 1),
+              ),
+              elevation: isSelected ? 4 : 1,
+              shadowColor: isSelected ? appDeepPurple.withOpacity(0.3) : Colors.black.withOpacity(0.1),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Stack(
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${_getEmojiForLabel(addr.label)} ${addr.label}',
+                          style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              color: appDeepPurple),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          addr.street,
+                          style: GoogleFonts.poppins(fontSize: 14.5, color: Colors.grey[800], height: 1.4),
+                        ),
+                        Text(
+                          '${addr.city}, ${addr.state} - ${addr.pinCode}',
+                          style: GoogleFonts.poppins(fontSize: 14.5, color: Colors.grey[800], height: 1.4),
+                        ),
+                      ],
+                    ),
+                    if (isSelected)
+                      Positioned(
+                        top: -4,
+                        right: -4,
+                        child: Icon(Icons.check_circle, color: appDeepPurple, size: 26),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  String _getEmojiForLabel(String label) {
+    switch (label.toLowerCase()) {
+      case 'home':
+        return '🏠';
+      case 'work':
+      case 'office':
+        return '🏢';
+      default:
+        return '📍';
+    }
+  }
+
+  Widget _buildForm(BuildContext context) {
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
       child: Form(
         key: _formKey,
         child: Column(
           children: [
-            _buildTextField(label: "Full Name", controller: fullNameController),
-            const SizedBox(height: 16),
             _buildTextField(
-              label: "Phone Number",
-              keyboardType: TextInputType.phone,
-              controller: phoneNumberController,
+              label: "Street Address, House No.",
+              controller: controller.streetController,
+              validator: (val) => val == null || val.trim().isEmpty ? 'Required field' : null,
             ),
             const SizedBox(height: 16),
-            _buildTextField(label: "Street Address", controller: streetController),
-            const SizedBox(height: 16),
-            _buildTextField(label: "City", controller: cityController),
-            const SizedBox(height: 16),
-            _buildTextField(label: "State", controller: stateController),
+            _buildTextField(
+              label: "City",
+              controller: controller.cityController,
+              validator: (val) => val == null || val.trim().isEmpty ? 'Required field' : null,
+            ),
             const SizedBox(height: 16),
             _buildTextField(
-              label: "PIN Code",
+              label: "State / Province",
+              controller: controller.stateController,
+              validator: (val) => val == null || val.trim().isEmpty ? 'Required field' : null,
+            ),
+            const SizedBox(height: 16),
+            _buildTextField(
+              label: "PIN Code / Postal Code",
               keyboardType: TextInputType.number,
-              controller: pinCodeController,
+              controller: controller.pinCodeController,
+              validator: (val) {
+                if (val == null || val.trim().isEmpty) return 'Required field';
+                if (!RegExp(r'^\d{4,10}$').hasMatch(val.trim())) return 'Invalid PIN code';
+                return null;
+              },
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
             Obx(() {
               return Column(
                 children: [
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: ['Home', 'Office', 'Other'].map((label) {
-                      final isSelected = selectedLabel.value == label;
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                        child: ElevatedButton(
-                          onPressed: () {
-                            selectedLabel.value = label;
-                            if (label != 'Other') {
-                              customLabelController.clear();
-                            }
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: isSelected ? appDeepPurple : Colors.white,
-                            foregroundColor: isSelected ? Colors.white : Colors.black,
-                            side: BorderSide(color: appDeepPurple),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            elevation: isSelected ? 4 : 0,
-                          ),
-                          child: Text(
-                            label,
-                            style: GoogleFonts.poppins(
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: ['Home', 'Work', 'Other'].map((label) {
+                      final isSelected = controller.selectedLabel.value == label;
+                      return ChoiceChip(
+                        label: Text(label),
+                        selected: isSelected,
+                        onSelected: (selected) {
+                          if (selected) controller.selectedLabel.value = label;
+                        },
+                        labelStyle: GoogleFonts.poppins(
+                            color: isSelected ? Colors.white : appDeepPurple,
+                            fontWeight: FontWeight.w600),
+                        backgroundColor: Colors.white,
+                        selectedColor: appDeepPurple,
+                        shape: StadiumBorder(side: BorderSide(color: appDeepPurple)),
+                        elevation: isSelected ? 2 : 0,
                       );
                     }).toList(),
                   ),
-                  if (selectedLabel.value == 'Other') ...[
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: customLabelController,
-                      decoration: InputDecoration(
-                        labelText: 'Custom Label',
-                        labelStyle: GoogleFonts.poppins(fontWeight: FontWeight.w500),
-                        filled: true,
-                        fillColor: Colors.white,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                        enabledBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: appDeepPurple.withOpacity(0.6)),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: appDeepPurple, width: 2),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      onChanged: (value) {
-                        selectedLabel.value = value.trim().isEmpty ? 'Other' : value.trim();
-                      },
+                  if (controller.selectedLabel.value == 'Other') ...[
+                    const SizedBox(height: 16),
+                    _buildTextField(
+                      label: 'Custom Label (e.g., "Friend\'s House")',
+                      controller: controller.customLabelController,
+                      validator: (val) => val == null || val.trim().isEmpty ? 'A custom label is required' : null,
                     ),
                   ],
                 ],
@@ -263,41 +254,58 @@ class _AddressPageState extends State<AddressPage> {
             SizedBox(
               width: double.infinity,
               height: 50,
-              child: ElevatedButton(
-                onPressed: saveAddress,
+              child: Obx(() => ElevatedButton.icon(
+                icon: controller.isLoading.value
+                    ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2,
+                  ),
+                )
+                    : const Icon(Icons.save_alt_outlined, color: Colors.white),
+                onPressed: controller.isLoading.value
+                    ? null
+                    : () async {
+                  if (_formKey.currentState!.validate()) {
+                    final success = await controller.addAddress();
+                    if (success) {
+                      
+                      
+                      
+                    }
+                  }
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: appDeepPurple,
+                  disabledBackgroundColor: appDeepPurple.withOpacity(0.7),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  elevation: 2,
                 ),
-                child: Text(
-                  "Save Address",
+                label: Text(
+                  controller.isLoading.value ? "Saving..." : "Save Address",
                   style: GoogleFonts.poppins(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                     color: Colors.white,
                   ),
                 ),
-              ),
+              )),
             ),
             const SizedBox(height: 12),
             TextButton(
-              onPressed: () {
-                isAddingAddress.value = false;
-                fullNameController.clear();
-                phoneNumberController.clear();
-                streetController.clear();
-                cityController.clear();
-                stateController.clear();
-                pinCodeController.clear();
-                customLabelController.clear();
-                selectedLabel.value = 'Home';
+              onPressed: controller.isLoading.value
+                  ? null
+                  : () {
+                controller.isAddingAddress.value = false;
+                controller.clearForm();
               },
               child: Text(
                 'Cancel',
-                style: GoogleFonts.poppins(color: appDeepPurple, fontWeight: FontWeight.w600),
+                style: GoogleFonts.poppins(
+                    color: appDeepPurple, fontWeight: FontWeight.w600),
               ),
             ),
           ],
@@ -310,11 +318,12 @@ class _AddressPageState extends State<AddressPage> {
     required String label,
     required TextEditingController controller,
     TextInputType keyboardType = TextInputType.text,
+    String? Function(String?)? validator,
   }) {
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
-      validator: (value) => value == null || value.trim().isEmpty ? 'Required field' : null,
+      validator: validator,
       style: GoogleFonts.poppins(fontSize: 14),
       decoration: InputDecoration(
         labelText: label,
@@ -322,8 +331,12 @@ class _AddressPageState extends State<AddressPage> {
         filled: true,
         fillColor: Colors.white,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        border: OutlineInputBorder(
+          borderSide: BorderSide(color: Colors.grey.shade300),
+          borderRadius: BorderRadius.circular(12),
+        ),
         enabledBorder: OutlineInputBorder(
-          borderSide: BorderSide(color: appDeepPurple.withOpacity(0.6)),
+          borderSide: BorderSide(color: Colors.grey.shade400),
           borderRadius: BorderRadius.circular(12),
         ),
         focusedBorder: OutlineInputBorder(

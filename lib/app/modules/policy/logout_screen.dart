@@ -1,11 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart'; // Import Get package
 import 'package:mobiking/app/themes/app_theme.dart';
 
+
+import '../../controllers/login_controller.dart'; // Import your LoginController
+
 void showLogoutDialog(BuildContext context) {
+  // Find the LoginController instance
+  final LoginController loginController = Get.find<LoginController>();
+
   showDialog(
     context: context,
     builder: (context) => AlertDialog(
-      backgroundColor:  AppColors.neutralBackground, // Neutral background
+      backgroundColor: AppColors.neutralBackground, // Neutral background
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
       ),
@@ -42,11 +49,11 @@ void showLogoutDialog(BuildContext context) {
         ),
         ElevatedButton.icon(
           onPressed: () {
-            Navigator.of(context).pop(); // Close dialog
-            // Add your logout logic here
+            Navigator.of(context).pop(); // Close dialog immediately
+            loginController.logout(); // Call the logout method from the controller
           },
           icon: const Icon(Icons.check_circle_outline),
-          label: const Text('Logout',),
+          label: const Text('Logout'),
           style: ElevatedButton.styleFrom(
             foregroundColor: Colors.white,
             backgroundColor: AppColors.darkPurple,

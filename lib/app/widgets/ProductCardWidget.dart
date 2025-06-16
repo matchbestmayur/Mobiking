@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get/get_core/src/get_main.dart';
+import 'package:get_storage/get_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobiking/app/controllers/cart_controller.dart';
 import 'package:mobiking/app/modules/Product_page/product_page.dart';
@@ -156,9 +157,16 @@ class ProductCard extends StatelessWidget {
                       },
                     );
                   } else {
+                    final box = GetStorage();
+                    final userData = box.read('userData') ?? {};
+
+                    // Assuming userData contains cartId (adjust based on your actual data structure)
+                    final cartId = userData['cartId'] ?? '';
+
                     cartController.addToCart(
                       productId: '683e8aa4352ed33496cc8193',
                       variantName: 'Raging Black',
+
                     );
 
                     ScaffoldMessenger.of(context).showSnackBar(

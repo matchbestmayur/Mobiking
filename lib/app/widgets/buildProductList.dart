@@ -22,7 +22,7 @@ Widget buildProductList({
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
 
-        GroupGridSection(groups: groups ?? []),
+        GroupWithProductsSection(groups: groups ?? []),
         // Title row with "View All"
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8),

@@ -6,6 +6,8 @@ import 'package:mobiking/app/modules/home/home_screen.dart';
 import 'package:pin_code_fields/pin_code_fields.dart';
 import 'package:mobiking/app/themes/app_theme.dart';
 
+import '../bottombar/Bottom_bar.dart';
+
 class OtpVerificationScreen extends StatefulWidget {
   final String phoneNumber;
 
@@ -28,7 +30,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
       Future.delayed(const Duration(seconds: 2), () {
         setState(() => isLoading = false);
         print('OTP Submitted: $otp');
-        Get.to(HomeScreen());
+        Get.to(MainContainerScreen());
         // Navigate or show success
       });
     } else {
