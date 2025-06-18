@@ -2,6 +2,7 @@ import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:mobiking/app/modules/Order_confirmation/Confirmation_screen.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 
 // Import your data models
@@ -18,6 +19,7 @@ import '../controllers/cart_controller.dart';
 import '../controllers/address_controller.dart';
 import '../data/razor_pay.dart';
 import '../modules/bottombar/Bottom_bar.dart' show MainContainerScreen;
+import '../modules/checkout/widget/user_info_dialog_content.dart';
 import '../services/order_service.dart';
 import '../modules/home/home_screen.dart'; // Or your order success screen
 import '../themes/app_theme.dart';
@@ -202,6 +204,7 @@ class OrderController extends GetxController {
   }
 
   // --- Main placeOrder method ---
+  // --- Main placeOrder method ---
   Future<void> placeOrder({required String method}) async {
     // Reset any previous order IDs
     _currentBackendOrderId = null;
@@ -364,9 +367,10 @@ class OrderController extends GetxController {
       addressId: addressId,
     );
 
-    isLoading.value = true; // Start loading for any payment method
-
     try {
+      // Start loading only when network request is initiated
+      isLoading.value = true;
+
       if (method == 'COD') {
         final createdOrder = await _orderService.placeCodOrder(createOrderRequest);
 
@@ -382,7 +386,8 @@ class OrderController extends GetxController {
           backgroundColor: Colors.green.shade600,
           snackPosition: SnackPosition.TOP,
         );
-        Get.offAll(() => MainContainerScreen()); // Navigate to home or order success screen
+        Get.offAll(() => OrderConfirmationScreen()); // Navigate to home or order success screen
+        isLoading.value = false; // Stop loading after successful COD order
       } else if (method == 'Online') {
         print('Initiating online payment with backend...');
         final Map<String, dynamic> initiateResponse = await _orderService.initiateOnlineOrder(createOrderRequest);
@@ -427,10 +432,12 @@ class OrderController extends GetxController {
         };
         print('Opening Razorpay checkout with options: $options');
         _razorpay.open(options);
-        // Note: For online payments, isLoading remains true until _handlePaymentSuccess/_handlePaymentError completes.
-        // Cart clear and navigation happen only after successful verification in _handlePaymentSuccess.
+        // For online payments, isLoading remains true here.
+        // It will be set to false in _handlePaymentSuccess or _handlePaymentError.
 
       } else {
+        // If method is unsupported, it's not a network error, so stop loading and show snackbar.
+        isLoading.value = false; // Set to false immediately for unsupported method
         _showModernSnackbar(
           'Payment Method Invalid!',
           'The selected payment method is not currently supported.',
@@ -451,6 +458,7 @@ class OrderController extends GetxController {
         snackPosition: SnackPosition.TOP,
       );
       print('Place Order Service Error: Status ${e.statusCode} - Message: ${e.message}');
+      isLoading.value = false; // Ensure loading is off on service error
     } catch (e) {
       _showModernSnackbar(
         'Order Error!',
@@ -461,15 +469,10 @@ class OrderController extends GetxController {
         snackPosition: SnackPosition.TOP,
       );
       print('Place Order Unexpected Error: $e');
-    } finally {
-      // Only set isLoading to false here if it's a COD order or a general error occurred
-      // For 'Online', isLoading is controlled by Razorpay callbacks.
-      if (method == 'COD' || (method == 'Online' && (Get.isSnackbarOpen || !isLoading.value))) {
-        isLoading.value = false;
-      }
+      isLoading.value = false; // Ensure loading is off on unexpected error
     }
+    // The 'finally' block is still removed as per previous discussions for online payment handling
   }
-
   // --- Helper Methods (ensure these are correctly defined in your controller) ---
 
   // Helper method for displaying snackbars
@@ -481,6 +484,11 @@ class OrderController extends GetxController {
         required Color backgroundColor,
         SnackPosition snackPosition = SnackPosition.BOTTOM,
       }) {
+    // Check if a snackbar is currently open and dismiss it
+    if (Get.isSnackbarOpen) {
+      Get.back(); // This dismisses the current GetX snackbar
+    }
+
     Get.snackbar(
       title,
       message,
@@ -496,7 +504,6 @@ class OrderController extends GetxController {
       reverseAnimationCurve: Curves.easeInBack,
     );
   }
-
 
 
   /// Fetches the user's order history from the backend.
@@ -556,387 +563,40 @@ class OrderController extends GetxController {
     }
   }
 
-  // _promptUserInfo remains the same as previously defined
-  Future<bool> _promptUserInfo() async {
-    final user = _box.read('user') ?? {};
-    final RxString orderFor = (user['orderFor'] as String? ?? 'Self').obs;
+// In your original file where _promptUserInfo is defined (e.g., OrderController)
 
-    final TextEditingController nameController = TextEditingController(
-        text: orderFor.value == 'Self' ? (user['name'] ?? '') : '');
-    final TextEditingController phoneController = TextEditingController(text: user['phoneNo'] ?? user['phone'] ?? '');
-    final TextEditingController emailController = TextEditingController(text: user['email'] ?? '');
+// No need for these TextEditingControllers here anymore
+// final Rx<TextEditingController> nameController = Rx<TextEditingController>(...);
+// final Rx<TextEditingController> phoneController = Rx<TextEditingController>(...);
+// final Rx<TextEditingController> emailController = Rx<TextEditingController>(...);
+// final RxString orderFor = (...).obs; // No longer needed here
+
+  Future<bool> _promptUserInfo() async {
+    final GetStorage _box = GetStorage(); // Initialize _box if not globally available
+    final user = _box.read('user') ?? {};
 
     final bool? result = await Get.dialog<bool>(
       WillPopScope(
-        onWillPop: () async => false,
+        onWillPop: () async => false, // Prevents dialog from being dismissed by back button
         child: GestureDetector(
           onTap: () {
-            FocusScope.of(Get.context!).unfocus();
+            FocusScope.of(Get.context!).unfocus(); // Dismiss keyboard on tap outside fields
           },
-          child: Dialog(
-            insetPadding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 24.0),
-            backgroundColor: Colors.transparent,
-            child: Container(
-              height: MediaQuery.of(Get.context!).size.height * 0.80,
-              decoration: BoxDecoration(
-                color: AppColors.neutralBackground,
-                borderRadius: BorderRadius.circular(16.0),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.15),
-                    blurRadius: 15,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(16.0),
-                child: Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(top: 24, left: 24, right: 24, bottom: 8),
-                      child: Text(
-                        "Confirm Your Details",
-                        style: GoogleFonts.poppins(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 24,
-                          color: AppColors.textDark,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                    Divider(height: 10, thickness: 1, indent: 20, endIndent: 20, color: AppColors.lightPurple),
-                    const SizedBox(height: 10),
-
-                    Expanded(
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.symmetric(horizontal: 24),
-                        child: Obx(() {
-                          return Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const SizedBox(height: 16),
-
-                              Text(
-                                "Is this order for yourself or for someone else?",
-                                textAlign: TextAlign.center,
-                                style: GoogleFonts.poppins(
-                                  fontSize: 15,
-                                  color: AppColors.textLight,
-                                ),
-                              ),
-                              const SizedBox(height: 20),
-
-                              Container(
-                                decoration: BoxDecoration(
-                                  color: AppColors.neutralBackground,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: AppColors.lightPurple, width: 1.0),
-                                ),
-                                child: IntrinsicHeight(
-                                  child: Row(
-                                    children: [
-                                      Expanded(
-                                        child: GestureDetector(
-                                          onTap: () {
-                                            if (orderFor.value != 'Self') {
-                                              orderFor.value = 'Self';
-                                              nameController.text = user['name'] ?? '';
-                                              phoneController.text = user['phoneNo'] ?? user['phone'] ?? '';
-                                              emailController.text = user['email'] ?? '';
-                                            }
-                                          },
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-                                            decoration: BoxDecoration(
-                                              color: orderFor.value == 'Self' ? AppColors.primaryPurple.withOpacity(0.1) : Colors.transparent,
-                                              borderRadius: BorderRadius.circular(10),
-                                            ),
-                                            child: Row(
-                                              mainAxisAlignment: MainAxisAlignment.center,
-                                              children: [
-                                                Radio<String>(
-                                                  value: 'Self',
-                                                  groupValue: orderFor.value,
-                                                  onChanged: (String? value) {
-                                                    if (value != null) {
-                                                      orderFor.value = value;
-                                                      nameController.text = user['name'] ?? '';
-                                                      phoneController.text = user['phoneNo'] ?? user['phone'] ?? '';
-                                                      emailController.text = user['email'] ?? '';
-                                                    }
-                                                  },
-                                                  activeColor: AppColors.primaryPurple,
-                                                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                                ),
-                                                Text(
-                                                  "Self",
-                                                  style: GoogleFonts.poppins(
-                                                    fontSize: 16,
-                                                    fontWeight: FontWeight.w600,
-                                                    color: orderFor.value == 'Self' ? AppColors.primaryPurple : AppColors.textDark,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      VerticalDivider(color: AppColors.lightPurple.withOpacity(0.7), thickness: 1, width: 1),
-                                      Expanded(
-                                        child: GestureDetector(
-                                          onTap: () {
-                                            if (orderFor.value != 'Other') {
-                                              orderFor.value = 'Other';
-                                              nameController.clear();
-                                              phoneController.clear();
-                                              emailController.clear();
-                                            }
-                                          },
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-                                            decoration: BoxDecoration(
-                                              color: orderFor.value == 'Other' ? AppColors.primaryPurple.withOpacity(0.1) : Colors.transparent,
-                                              borderRadius: BorderRadius.circular(10),
-                                            ),
-                                            child: Row(
-                                              mainAxisAlignment: MainAxisAlignment.center,
-                                              children: [
-                                                Radio<String>(
-                                                  value: 'Other',
-                                                  groupValue: orderFor.value,
-                                                  onChanged: (String? value) {
-                                                    if (value != null) {
-                                                      orderFor.value = value;
-                                                      nameController.clear();
-                                                      phoneController.clear();
-                                                      emailController.clear();
-                                                    }
-                                                  },
-                                                  activeColor: AppColors.primaryPurple,
-                                                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                                ),
-                                                Text(
-                                                  "Other",
-                                                  style: GoogleFonts.poppins(
-                                                    fontSize: 16,
-                                                    fontWeight: FontWeight.w600,
-                                                    color: orderFor.value == 'Other' ? AppColors.primaryPurple : AppColors.textDark,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-
-                              const SizedBox(height: 24),
-
-                              // Name Field
-                              TextFormField(
-                                controller: nameController,
-                                style: GoogleFonts.poppins(fontSize: 16, color: AppColors.textDark),
-                                decoration: InputDecoration(
-                                  labelText: orderFor.value == 'Self' ? "Your Name" : "Recipient's Name",
-                                  hintText: orderFor.value == 'Self' ? "Your full name" : "e.g., Jane Doe",
-                                  labelStyle: GoogleFonts.poppins(color: AppColors.textLight, fontWeight: FontWeight.w500),
-                                  hintStyle: GoogleFonts.poppins(color: AppColors.textLight.withOpacity(0.7)),
-                                  prefixIcon: Icon(Icons.person_outline_rounded, color: AppColors.primaryPurple),
-                                  filled: true,
-                                  fillColor: AppColors.neutralBackground,
-                                  contentPadding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 16.0),
-                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none,),
-                                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.lightPurple, width: 1.0),),
-                                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.primaryPurple, width: 2.0),),
-                                  errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.danger, width: 1.5),),
-                                  focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.danger, width: 2.0),),
-                                ),
-                                validator: (value) {
-                                  if (value == null || value.trim().isEmpty) {
-                                    return 'Full name is required';
-                                  }
-                                  return null;
-                                },
-                                autovalidateMode: AutovalidateMode.onUserInteraction,
-                              ),
-
-                              const SizedBox(height: 20),
-
-                              // Phone Number Field
-                              TextFormField(
-                                controller: phoneController,
-                                keyboardType: TextInputType.phone,
-                                style: GoogleFonts.poppins(fontSize: 16, color: AppColors.textDark),
-                                decoration: InputDecoration(
-                                  labelText: "Phone Number",
-                                  hintText: "e.g., 9876543210",
-                                  labelStyle: GoogleFonts.poppins(color: AppColors.textLight, fontWeight: FontWeight.w500),
-                                  hintStyle: GoogleFonts.poppins(color: AppColors.textLight.withOpacity(0.7)),
-                                  prefixIcon: Icon(Icons.phone_outlined, color: AppColors.primaryPurple),
-                                  filled: true,
-                                  fillColor: AppColors.neutralBackground,
-                                  contentPadding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 16.0),
-                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none,),
-                                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.lightPurple, width: 1.0),),
-                                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.primaryPurple, width: 2.0),),
-                                  errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.danger, width: 1.5),),
-                                  focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.danger, width: 2.0),),
-                                ),
-                                validator: (value) {
-                                  if (value == null || value.trim().isEmpty) {
-                                    return 'Phone number is required';
-                                  }
-                                  if (value.trim().length < 10) {
-                                    return 'Enter a valid 10-digit number';
-                                  }
-                                  return null;
-                                },
-                                autovalidateMode: AutovalidateMode.onUserInteraction,
-                              ),
-
-                              const SizedBox(height: 20),
-
-                              // Email Field
-                              TextFormField(
-                                controller: emailController,
-                                keyboardType: TextInputType.emailAddress,
-                                style: GoogleFonts.poppins(fontSize: 16, color: AppColors.textDark),
-                                decoration: InputDecoration(
-                                  labelText: "Email (Optional)",
-                                  hintText: "e.g., example@domain.com",
-                                  labelStyle: GoogleFonts.poppins(color: AppColors.textLight, fontWeight: FontWeight.w500),
-                                  hintStyle: GoogleFonts.poppins(color: AppColors.textLight.withOpacity(0.7)),
-                                  prefixIcon: Icon(Icons.email_outlined, color: AppColors.primaryPurple),
-                                  filled: true,
-                                  fillColor: AppColors.neutralBackground,
-                                  contentPadding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 16.0),
-                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none,),
-                                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.lightPurple, width: 1.0),),
-                                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.primaryPurple, width: 2.0),),
-                                  errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.danger, width: 1.5),),
-                                  focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.danger, width: 2.0),),
-                                ),
-                                validator: (value) {
-                                  if (value != null && value.isNotEmpty && !GetUtils.isEmail(value)) {
-                                    return 'Enter a valid email address';
-                                  }
-                                  return null;
-                                },
-                                autovalidateMode: AutovalidateMode.onUserInteraction,
-                              ),
-                              const SizedBox(height: 30),
-                            ],
-                          );
-                        }),
-                      ),
-                    ),
-
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton(
-                              onPressed: () {
-                                // Basic validation
-                                if (nameController.text.trim().isEmpty) {
-                                  _showModernSnackbar(
-                                    'Name Required',
-                                    'Please enter a full name for the order.',
-                                    icon: Icons.person_outline_rounded,
-                                    backgroundColor: AppColors.danger,
-                                    isError: true,
-                                  );
-                                  return;
-                                }
-
-                                if (phoneController.text.trim().isEmpty || phoneController.text.trim().length < 10) {
-                                  _showModernSnackbar(
-                                    'Phone Number Required',
-                                    'Please enter a valid 10-digit phone number for the order.',
-                                    icon: Icons.phone_android_outlined,
-                                    backgroundColor: AppColors.danger,
-                                    isError: true,
-                                  );
-                                  return;
-                                }
-
-                                // Email validation (only if provided)
-                                if (emailController.text.isNotEmpty && !GetUtils.isEmail(emailController.text)) {
-                                  _showModernSnackbar(
-                                    'Invalid Email',
-                                    'Please enter a valid email address or leave it empty.',
-                                    icon: Icons.email_outlined,
-                                    backgroundColor: AppColors.danger,
-                                    isError: true,
-                                  );
-                                  return;
-                                }
-
-                                // If all validations pass, save data and close dialog with 'true'
-                                final updatedUser = {
-                                  ...user,
-                                  'name': nameController.text.trim(),
-                                  'phoneNo': phoneController.text.trim(),
-                                  'phone': phoneController.text.trim(),
-                                  'email': emailController.text.trim(),
-                                  'orderFor': orderFor.value,
-                                };
-                                _box.write('user', updatedUser);
-                                Get.back(result: true); // Close the dialog and pass true
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.primaryPurple,
-                                padding: const EdgeInsets.symmetric(vertical: 14),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                elevation: 4,
-                              ),
-                              child: Text(
-                                "Save & Continue",
-                                style: GoogleFonts.poppins(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          TextButton(
-                            onPressed: () {
-                              Get.back(result: false); // Close the dialog immediately
-                            },
-                            child: Text(
-                              "Cancel",
-                              style: GoogleFonts.poppins(
-                                color: AppColors.textLight,
-                                fontWeight: FontWeight.w500,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
+          // Use your new StatefulWidget here!
+          child: UserInfoDialogContent(initialUser: user),
         ),
       ),
+      // You can remove barrierDismissible if WillPopScope is handling it
+      // barrierDismissible: false,
     );
-    nameController.dispose();
-    phoneController.dispose();
-    emailController.dispose();
-    return result ?? false;
+
+    // The TextEditingControllers are now disposed INSIDE UserInfoDialogContent's dispose method,
+    // so remove these lines from here:
+    // nameController.value.dispose();
+    // phoneController.value.dispose();
+    // emailController.value.dispose();
+
+    return result ?? false; // Return false if dialog is dismissed in an unexpected way
   }
+
 }

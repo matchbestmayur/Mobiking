@@ -5,6 +5,9 @@ import 'package:mobiking/app/modules/address/AddressPage.dart';
 import 'package:mobiking/app/modules/policy/cancellation_policy.dart';
 import 'package:mobiking/app/modules/policy/refund_policy.dart';
 import 'package:mobiking/app/modules/policy/terms_conditions.dart';
+import 'package:mobiking/app/modules/profile/query/query_screen.dart';
+import 'package:mobiking/app/modules/profile/wishlist/Aboout_screen.dart';
+import 'package:mobiking/app/modules/profile/wishlist/Support_Screen.dart';
 import 'package:mobiking/app/modules/profile/wishlist/Wish_list_screen.dart';
 import 'package:mobiking/app/themes/app_theme.dart';
 import 'package:share_plus/share_plus.dart';
@@ -95,15 +98,15 @@ class ProfileScreen extends StatelessWidget {
                 children: [
                   InfoBox(icon: Icons.headset_mic_outlined, title: 'Support',
                     onPressed: (){
-                      Get.back();
+                      showSupportDialog(context);
                     },),
                   InfoBox(icon: Icons.payment_outlined, title: 'Payment'
                       ,onPressed: (){
-                        Get.back();
+                        /*Get.back();*/
                       }),
                   InfoBox(icon: Icons.info_outline, title: 'About Us'
                       , onPressed: (){
-                        Get.back();
+                        showAboutUsDialog(context);
                       }
                   ),
                 ],
@@ -134,6 +137,17 @@ class ProfileScreen extends StatelessWidget {
                   );
                 },
               ),*/
+              ProfileListTile(
+                icon: Icons.message_outlined,
+                title: 'Query',
+                onTap: () {
+                  Get.to(
+                    QueriesScreen(),
+                    transition: Transition.rightToLeftWithFade, // or use Transition.rightToLeft
+                    duration: const Duration(milliseconds: 300), // optional for smoothness
+                  );
+                },
+              ),
               ProfileListTile(
                 icon: Icons.favorite_border_outlined,
                 title: 'Wishlist',

@@ -1,5 +1,8 @@
-
 import 'package:mobiking/app/data/product_model.dart';
+
+// Assuming SellingPrice and ProductModel are defined in product_model.dart
+// class SellingPrice { ... }
+// class ProductModel { ... }
 
 class OrderItemProductModel {
   final String id;
@@ -234,6 +237,14 @@ class OrderModel {
   });
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
+    // Helper function to parse numeric values which might come as String or num
+    double _parseNum(dynamic value) {
+      if (value == null) return 0.0;
+      if (value is num) return value.toDouble();
+      if (value is String) return double.tryParse(value) ?? 0.0;
+      return 0.0; // Fallback for unexpected types
+    }
+
     return OrderModel(
       id: json['_id'] ?? '',
       status: json['status'] ?? '',
@@ -241,14 +252,14 @@ class OrderModel {
       isAppOrder: json['isAppOrder'] ?? false,
       abandonedOrder: json['abondonedOrder'] ?? false, // Keep original JSON key for parsing
       orderId: json['orderId'] ?? '',
-      orderAmount: (json['orderAmount'] as num?)?.toDouble() ?? 0.0,
+      orderAmount: _parseNum(json['orderAmount']),
       name: json['name'] ?? '',
       email: json['email'] ?? '',
       phoneNo: json['phoneNo'] ?? '',
-      deliveryCharge: (json['deliveryCharge'] as num?)?.toDouble() ?? 0.0,
-      discount: (json['discount'] as num?)?.toDouble() ?? 0.0,
-      gst: (json['gst'] as num?)?.toDouble() ?? 0.0,
-      subtotal: (json['subtotal'] as num?)?.toDouble() ?? 0.0,
+      deliveryCharge: _parseNum(json['deliveryCharge']),
+      discount: _parseNum(json['discount']),
+      gst: _parseNum(json['gst']), // Apply the helper here
+      subtotal: _parseNum(json['subtotal']),
       method: json['method'] ?? '',
       userId: json['userId'] != null && json['userId'] is Map
           ? OrderUserModel.fromJson(json['userId'] as Map<String, dynamic>)

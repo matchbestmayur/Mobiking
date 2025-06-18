@@ -10,11 +10,13 @@ import '../../../controllers/cart_controller.dart'; // Make sure this path is co
 class ProductVariantBottomSheet extends StatelessWidget {
   final ProductModel product;
   final bool isAdding;
+  final ScrollController? scrollController; // NEW: Accept a ScrollController
 
   const ProductVariantBottomSheet({
     Key? key,
     required this.product,
     required this.isAdding,
+    this.scrollController, // NEW: Make it optional or required based on usage
   }) : super(key: key);
 
   // Static method to show the bottom sheet
@@ -28,10 +30,11 @@ class ProductVariantBottomSheet extends StatelessWidget {
           minChildSize: 0.25,
           maxChildSize: 0.9,
           expand: false,
-          builder: (BuildContext context, ScrollController scrollController) {
+          builder: (BuildContext context, ScrollController draggableScrollController) { // RENAMED for clarity
             return ProductVariantBottomSheet(
               product: product,
               isAdding: isAdding,
+              scrollController: draggableScrollController, // PASS THE CONTROLLER HERE
             );
           },
         );
@@ -51,7 +54,7 @@ class ProductVariantBottomSheet extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16.0),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisSize: MainAxisSize.min, // Use mainAxisSize.min for Column in flexible height sheets
         children: [
           Container(
             width: 40,
@@ -72,7 +75,7 @@ class ProductVariantBottomSheet extends StatelessWidget {
           const SizedBox(height: 16),
           Expanded(
             child: ListView.builder(
-              controller: Get.find<ScrollController>(), // Use Get.find to get the scroll controller passed by DraggableScrollableSheet
+              controller: scrollController, // USE THE PASSED CONTROLLER HERE!
               itemCount: variantEntries.length,
               itemBuilder: (context, index) {
                 final entry = variantEntries[index];
@@ -147,7 +150,7 @@ class ProductVariantBottomSheet extends StatelessWidget {
                                 ),
                                 Text(
                                   isAdding
-                                      ? 'Available: $variantStock'
+                                      ? 'Available: ${variantStock > 0 ? variantStock : 'Out of Stock'}' // Improved stock display
                                       : 'In Cart: $currentVariantQuantity',
                                   style: GoogleFonts.poppins(
                                     fontSize: 14,

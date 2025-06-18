@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -19,6 +20,9 @@ class CheckoutScreen extends StatelessWidget {
   final cartController = Get.find<CartController>();
   final addressController = Get.find<AddressController>();
   final orderController = Get.find<OrderController>();
+
+  // Add an RxString to hold the selected payment method
+  final RxString _selectedPaymentMethod = ''.obs;
 
   @override
   Widget build(BuildContext context) {
@@ -42,8 +46,8 @@ class CheckoutScreen extends StatelessWidget {
       body: Obx(() {
         final cartItems = cartController.cartItems;
 
-
-        final cartProductsWithQuantityAndVariantAndVariantAndVariantAndVariant = cartItems.map((item) {
+        final cartProductsWithQuantityAndVariantAndVariantAndVariantAndVariant =
+        cartItems.map((item) {
           final productData = item['productId'];
           final product = productData is Map<String, dynamic>
               ? ProductModel.fromJson(productData as Map<String, dynamic>)
@@ -76,12 +80,14 @@ class CheckoutScreen extends StatelessWidget {
           };
         }).toList();
 
-        double itemTotal = cartProductsWithQuantityAndVariantAndVariantAndVariantAndVariant.fold(0.0, (sum, entry) {
+        double itemTotal = cartProductsWithQuantityAndVariantAndVariantAndVariantAndVariant
+            .fold(0.0, (sum, entry) {
           final ProductModel product = entry['product'] as ProductModel;
           final int quantity = entry['quantity'] as int;
           double itemPrice = 0.0;
-          if (product.sellingPrice.isNotEmpty && product.sellingPrice[0].price != null) {
-            itemPrice = product.sellingPrice[0].price.toDouble();
+          if (product.sellingPrice.isNotEmpty &&
+              product.sellingPrice[0].price != null) {
+            itemPrice = product.sellingPrice[0].price!.toDouble();
           }
           return sum + itemPrice * quantity;
         });
@@ -103,7 +109,8 @@ class CheckoutScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
-              ...cartProductsWithQuantityAndVariantAndVariantAndVariantAndVariant.map((entry) {
+              ...cartProductsWithQuantityAndVariantAndVariantAndVariantAndVariant
+                  .map((entry) {
                 final product = entry['product'] as ProductModel;
                 final quantity = entry['quantity'] as int;
                 final variantName = entry['variantName'].toString();
@@ -136,12 +143,15 @@ class CheckoutScreen extends StatelessWidget {
                 height: 200,
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
-                  itemCount: cartProductsWithQuantityAndVariantAndVariantAndVariantAndVariant.length,
+                  itemCount: cartProductsWithQuantityAndVariantAndVariantAndVariantAndVariant
+                      .length,
                   itemBuilder: (context, index) {
                     return Padding(
                       padding: const EdgeInsets.only(right: 14),
                       child: SuggestedProductCard(
-                          product: cartProductsWithQuantityAndVariantAndVariantAndVariantAndVariant[index]['product'] as ProductModel),
+                          product:
+                          cartProductsWithQuantityAndVariantAndVariantAndVariantAndVariant[
+                          index]['product'] as ProductModel),
                     );
                   },
                 ),
@@ -173,7 +183,11 @@ class CheckoutScreen extends StatelessWidget {
             ? BorderSide(color: Theme.of(Get.context!).primaryColor, width: 2.5)
             : BorderSide(color: Colors.grey.shade200, width: 1.0),
       ),
-      color: isDisabled ? Colors.grey.shade100 : (isSelected ? Theme.of(Get.context!).primaryColor.withOpacity(0.1) : Colors.white),
+      color: isDisabled
+          ? Colors.grey.shade100
+          : (isSelected
+          ? Theme.of(Get.context!).primaryColor.withOpacity(0.1)
+          : Colors.white),
       child: InkWell(
         onTap: isDisabled ? null : onTap,
         borderRadius: BorderRadius.circular(16.0),
@@ -186,7 +200,9 @@ class CheckoutScreen extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: isSelected ? Theme.of(Get.context!).primaryColor : Colors.grey.shade200,
+                  color: isSelected
+                      ? Theme.of(Get.context!).primaryColor
+                      : Colors.grey.shade200,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
@@ -228,7 +244,8 @@ class CheckoutScreen extends StatelessWidget {
                 height: 28,
                 child: CircularProgressIndicator(
                   strokeWidth: 3,
-                  valueColor: AlwaysStoppedAnimation<Color>(Theme.of(Get.context!).primaryColor),
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                      Theme.of(Get.context!).primaryColor),
                 ),
               )
                   : Icon(
@@ -278,14 +295,15 @@ class CheckoutScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 10),
-
             Obx(() {
               final selected = addressController.selectedAddress.value;
 
               return Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.location_pin, color: selected != null ? Colors.green.shade600 : Colors.grey, size: 28),
+                  Icon(Icons.location_pin,
+                      color: selected != null ? Colors.green.shade600 : Colors.grey,
+                      size: 28),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Column(
@@ -323,30 +341,27 @@ class CheckoutScreen extends StatelessWidget {
                     },
                     child: Text(
                       selected != null ? "Change" : "Add/Select",
-                      style: GoogleFonts.poppins(color: Theme.of(Get.context!).primaryColor, fontWeight: FontWeight.w500),
+                      style: GoogleFonts.poppins(
+                          color: Theme.of(Get.context!).primaryColor,
+                          fontWeight: FontWeight.w500),
                     ),
                   ),
                 ],
               );
             }),
-
             const SizedBox(height: 10),
             const Divider(height: 1, color: Colors.grey),
-
             const SizedBox(height: 12),
-
-
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-
                 Flexible(
                   flex: 2,
                   child: Obx(() {
                     return InkWell(
                       onTap: orderController.isLoading.value
                           ? null
-                          : () => _showPaymentMethodSelectionDialog(),
+                          : () => _showPaymentMethodSelectionDialog(), // Always show dialog
                       borderRadius: BorderRadius.circular(14),
                       child: Container(
                         height: 48,
@@ -363,12 +378,16 @@ class CheckoutScreen extends StatelessWidget {
                                 ? const SizedBox(
                               width: 20,
                               height: 20,
-                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                              child: CircularProgressIndicator(
+                                  color: Colors.white, strokeWidth: 2),
                             )
-                                : const Icon(Icons.account_balance_wallet_rounded, color: Colors.white, size: 20),
+                                : const Icon(Icons.account_balance_wallet_rounded,
+                                color: Colors.white, size: 20),
                             const SizedBox(width: 8),
                             Text(
-                              orderController.isLoading.value ? "Processing..." : "Pay Using",
+                              orderController.isLoading.value
+                                  ? "Processing..."
+                                  : "Pay Using",
                               style: GoogleFonts.poppins(
                                 color: Colors.white,
                                 fontSize: 14,
@@ -381,10 +400,7 @@ class CheckoutScreen extends StatelessWidget {
                     );
                   }),
                 ),
-
                 const SizedBox(width: 12),
-
-
                 Flexible(
                   flex: 3,
                   child: Obx(() {
@@ -392,14 +408,30 @@ class CheckoutScreen extends StatelessWidget {
                       final productData = item['productId'];
                       final product = productData is Map<String, dynamic>
                           ? ProductModel.fromJson(productData)
-                          : ProductModel(id: '', name: '', fullName: '', slug: '', description: '', images: [],
-                          sellingPrice: [], variants: {}, active: false, newArrival: false, liked: false,
-                          bestSeller: false, recommended: false, categoryId: '', stockIds: [], orderIds: [],
-                          groupIds: [], totalStock: 0);
+                          : ProductModel(
+                          id: '',
+                          name: '',
+                          fullName: '',
+                          slug: '',
+                          description: '',
+                          images: [],
+                          sellingPrice: [],
+                          variants: {},
+                          active: false,
+                          newArrival: false,
+                          liked: false,
+                          bestSeller: false,
+                          recommended: false,
+                          categoryId: '',
+                          stockIds: [],
+                          orderIds: [],
+                          groupIds: [],
+                          totalStock: 0);
                       final quantity = item['quantity'] ?? 1;
                       double itemPrice = 0.0;
-                      if (product.sellingPrice.isNotEmpty && product.sellingPrice[0].price != null) {
-                        itemPrice = product.sellingPrice[0].price.toDouble();
+                      if (product.sellingPrice.isNotEmpty &&
+                          product.sellingPrice[0].price != null) {
+                        itemPrice = product.sellingPrice[0].price!.toDouble();
                       }
                       return sum + itemPrice * quantity;
                     });
@@ -408,19 +440,98 @@ class CheckoutScreen extends StatelessWidget {
                     final gstCharge = subTotal * 0.18;
                     final displayTotal = subTotal + deliveryCharge + gstCharge;
 
-                    final isAddressSelected = addressController.selectedAddress.value != null;
+                    final isAddressSelected =
+                        addressController.selectedAddress.value != null;
+                    final isCartEmpty = cartController.cartItems.isEmpty;
+                    final isPaymentMethodSelected = _selectedPaymentMethod.value.isNotEmpty;
 
                     return InkWell(
-                      onTap: (orderController.isLoading.value || !isAddressSelected || cartController.cartItems.isEmpty)
+                      onTap: (orderController.isLoading.value ||
+                          !isAddressSelected ||
+                          isCartEmpty ||
+                          !isPaymentMethodSelected)
                           ? null
-                          : () {
-                        _showPaymentMethodSelectionDialog();
+                          : () async {
+                        // Check all conditions again before placing order
+                        if (!isAddressSelected) {
+                          Get.snackbar(
+                            'Address Required',
+                            'Please select a delivery address.',
+                            snackPosition: SnackPosition.BOTTOM,
+                            backgroundColor: Colors.red.withOpacity(0.8),
+                            colorText: Colors.white,
+                            icon: const Icon(Icons.location_on, color: Colors.white),
+                            margin: const EdgeInsets.all(10),
+                            borderRadius: 10,
+                            animationDuration: const Duration(milliseconds: 300),
+                            duration: const Duration(seconds: 3),
+                          );
+                          return;
+                        }
+
+                        if (isCartEmpty) {
+                          Get.snackbar(
+                            'Cart Empty',
+                            'Your cart is empty. Please add items before placing an order.',
+                            snackPosition: SnackPosition.BOTTOM,
+                            backgroundColor: Colors.red.withOpacity(0.8),
+                            colorText: Colors.white,
+                            icon: const Icon(Icons.shopping_cart, color: Colors.white),
+                            margin: const EdgeInsets.all(10),
+                            borderRadius: 10,
+                            animationDuration: const Duration(milliseconds: 300),
+                            duration: const Duration(seconds: 3),
+                          );
+                          return;
+                        }
+
+                        if (!isPaymentMethodSelected) {
+                          Get.snackbar(
+                            'Payment Method Required',
+                            'Please select a payment method before placing your order.',
+                            snackPosition: SnackPosition.BOTTOM,
+                            backgroundColor: Colors.red.withOpacity(0.8),
+                            colorText: Colors.white,
+                            icon: const Icon(Icons.payment, color: Colors.white),
+                            margin: const EdgeInsets.all(10),
+                            borderRadius: 10,
+                            animationDuration: const Duration(milliseconds: 300),
+                            duration: const Duration(seconds: 3),
+                          );
+                          // Open the dialog to prompt selection
+                          _showPaymentMethodSelectionDialog();
+                          return;
+                        }
+
+                        // If all checks pass, proceed with placing the order
+                        orderController.isLoading.value = true;
+                        if (_selectedPaymentMethod.value == 'COD') {
+                          await orderController.placeOrder(method: 'COD');
+                        } else if (_selectedPaymentMethod.value == 'Online') {
+                          Get.snackbar(
+                            'Online Payment',
+                            'Initiating secure payment...',
+                            snackPosition: SnackPosition.BOTTOM,
+                            backgroundColor:
+                            Theme.of(Get.context!).primaryColor.withOpacity(0.8),
+                            colorText: Colors.white,
+                            icon: const Icon(Icons.credit_card_outlined, color: Colors.white),
+                            margin: const EdgeInsets.all(10),
+                            borderRadius: 10,
+                            animationDuration: const Duration(milliseconds: 300),
+                            duration: const Duration(seconds: 2),
+                          );
+                          await orderController.placeOrder(method: 'Online');
+                        }
                       },
                       borderRadius: BorderRadius.circular(14),
                       child: Container(
                         height: 48,
                         decoration: BoxDecoration(
-                          color: (orderController.isLoading.value || !isAddressSelected || cartController.cartItems.isEmpty)
+                          color: (orderController.isLoading.value ||
+                              !isAddressSelected ||
+                              isCartEmpty ||
+                              !isPaymentMethodSelected)
                               ? const Color(0xFF6200EE).withOpacity(0.6)
                               : const Color(0xFF6200EE),
                           borderRadius: BorderRadius.circular(14),
@@ -435,8 +546,13 @@ class CheckoutScreen extends StatelessWidget {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text("₹${displayTotal.toStringAsFixed(0)}",
-                                      style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
-                                  Text("Total", style: GoogleFonts.poppins(color: Colors.white70, fontSize: 11)),
+                                      style: GoogleFonts.poppins(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 15)),
+                                  Text("Total",
+                                      style: GoogleFonts.poppins(
+                                          color: Colors.white70, fontSize: 11)),
                                 ],
                               ),
                               Row(
@@ -445,14 +561,19 @@ class CheckoutScreen extends StatelessWidget {
                                     const SizedBox(
                                       width: 20,
                                       height: 20,
-                                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                      child: CircularProgressIndicator(
+                                          color: Colors.white, strokeWidth: 2),
                                     )
                                   else
                                     Text("Place Order",
-                                        style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
+                                        style: GoogleFonts.poppins(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 13)),
                                   const SizedBox(width: 6),
                                   if (!orderController.isLoading.value)
-                                    const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 18),
+                                    const Icon(Icons.arrow_forward_ios_rounded,
+                                        color: Colors.white, size: 18),
                                 ],
                               )
                             ],
@@ -471,11 +592,10 @@ class CheckoutScreen extends StatelessWidget {
   }
 
   void _showPaymentMethodSelectionDialog() {
-    final RxString selectedPaymentMethod = ''.obs;
-
     Get.defaultDialog(
       title: "Select Payment Method",
-      titleStyle: GoogleFonts.poppins(fontWeight: FontWeight.w700, fontSize: 20, color: Colors.black87),
+      titleStyle: GoogleFonts.poppins(
+          fontWeight: FontWeight.w700, fontSize: 20, color: Colors.black87),
       radius: 20.0,
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       backgroundColor: Colors.white,
@@ -491,10 +611,11 @@ class CheckoutScreen extends StatelessWidget {
               onTap: orderController.isLoading.value
                   ? null
                   : () {
-                selectedPaymentMethod.value = 'COD';
+                _selectedPaymentMethod.value = 'COD';
               },
-              isLoading: orderController.isLoading.value && selectedPaymentMethod.value == 'COD',
-              isSelected: selectedPaymentMethod.value == 'COD',
+              isLoading:
+              orderController.isLoading.value && _selectedPaymentMethod.value == 'COD',
+              isSelected: _selectedPaymentMethod.value == 'COD',
             ),
             const SizedBox(height: 8),
             buildPaymentOption(
@@ -504,10 +625,11 @@ class CheckoutScreen extends StatelessWidget {
               onTap: orderController.isLoading.value
                   ? null
                   : () {
-                selectedPaymentMethod.value = 'Online';
+                _selectedPaymentMethod.value = 'Online';
               },
-              isLoading: orderController.isLoading.value && selectedPaymentMethod.value == 'Online',
-              isSelected: selectedPaymentMethod.value == 'Online',
+              isLoading:
+              orderController.isLoading.value && _selectedPaymentMethod.value == 'Online',
+              isSelected: _selectedPaymentMethod.value == 'Online',
             ),
             const SizedBox(height: 20),
             Obx(() => Row(
@@ -515,61 +637,56 @@ class CheckoutScreen extends StatelessWidget {
                 Expanded(
                   child: ElevatedButton(
                     onPressed: () {
-                      Get.back();
+                      Get.back(); // Dismiss the payment selection dialog
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.grey.shade300,
                       foregroundColor: Colors.black87,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
                       minimumSize: const Size.fromHeight(48),
                       elevation: 0,
                     ),
-                    child: Text('Cancel', style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600)),
+                    child: Text('Cancel',
+                        style: GoogleFonts.poppins(
+                            fontSize: 16, fontWeight: FontWeight.w600)),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: (selectedPaymentMethod.value.isEmpty || orderController.isLoading.value)
+                    onPressed: (_selectedPaymentMethod.value.isEmpty ||
+                        orderController.isLoading.value)
                         ? null // Disable button if no method selected or loading
                         : () async {
-                      // First, show loading state immediately if an action is going to be taken
-                      orderController.isLoading.value = true; // Indicate loading for the button
+                      // 1. Dismiss the dialog FIRST.
+                      Get.back(); // This ensures the dialog's OverlayEntry is removed.
 
-                      if (selectedPaymentMethod.value == 'COD') {
-                        // Call placeOrder directly for COD
-                        await orderController.placeOrder(method: 'COD');
-                      } else if (selectedPaymentMethod.value == 'Online') {
-                        // For Online payment, you want to inform the user and then proceed.
-
-                        // 1. Give immediate visual feedback (snackbar)
-                        Get.snackbar(
-                          'Online Payment',
-                          'Initiating secure payment...', // More active message
-                          snackPosition: SnackPosition.BOTTOM,
-                          backgroundColor: Theme.of(Get.context!).primaryColor.withOpacity(0.8),
-                          colorText: Colors.white,
-                          icon: const Icon(Icons.credit_card_outlined, color: Colors.white),
-                          margin: const EdgeInsets.all(10),
-                          borderRadius: 10,
-                          animationDuration: const Duration(milliseconds: 300),
-                          duration: const Duration(seconds: 2), // Short duration, as action follows
-                        );
-
-                        // 2. Dismiss the current bottom sheet or dialog (if this button is in one)
-                        //    Consider if you want to dismiss immediately or after the API call.
-                        //    Dismissing here gives a cleaner transition.
-                        Get.back(); // Dismisses the current screen (e.g., payment method selection)
-
-                        // 3. IMPORTANT: Now, actually call the online order placement logic
-                        //    This call should typically handle the backend interaction
-                        //    and then potentially redirect to a payment gateway.
-                        await orderController.placeOrder(method: 'Online');
-
-                        // The `orderController.placeOrder` method itself will
-                        // handle `isLoading` state (setting it to false in its `finally` block),
-                        // success/error snackbars, and navigation (e.g., to HomeScreen).
-                      }
+                      // 2. Schedule the remaining actions for AFTER the current frame has been rendered.
+                      // This is CRUCIAL to prevent the "Duplicate GlobalKeys" error
+                      // by giving Flutter time to unmount the dialog's OverlayEntry
+                      // before a new OverlayEntry (for the snackbar) is added.
+                      WidgetsBinding.instance.addPostFrameCallback((_) async {
+                        if (_selectedPaymentMethod.value == 'COD') {
+                          await orderController.placeOrder(method: 'COD');
+                        } else if (_selectedPaymentMethod.value == 'Online') {
+                          Get.snackbar(
+                            'Online Payment',
+                            'Initiating secure payment...',
+                            snackPosition: SnackPosition.BOTTOM,
+                            backgroundColor:
+                            Theme.of(Get.context!).primaryColor.withOpacity(0.8),
+                            colorText: Colors.white,
+                            icon: const Icon(Icons.credit_card_outlined,
+                                color: Colors.white),
+                            margin: const EdgeInsets.all(10),
+                            borderRadius: 10,
+                            animationDuration: const Duration(milliseconds: 300),
+                            duration: const Duration(seconds: 2),
+                          );
+                          await orderController.placeOrder(method: 'Online');
+                        }
+                      });
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Theme.of(Get.context!).primaryColor,
@@ -584,7 +701,8 @@ class CheckoutScreen extends StatelessWidget {
                       height: 24,
                       child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
                     )
-                        : Text('Proceed', style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600)),
+                        : Text('Select',
+                        style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600)),
                   ),
                 ),
               ],

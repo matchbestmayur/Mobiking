@@ -15,7 +15,8 @@ class AddressService extends GetxService {
   @override
   void onInit() {
     super.onInit();
-    fetchUserAddresses();
+    // No need to fetch here if it's fetched in controller's onInit, to avoid double-fetch
+    // fetchUserAddresses();
   }
 
   String? _getAccessToken() {
@@ -39,24 +40,28 @@ class AddressService extends GetxService {
         'Content-Type': 'application/json',
       });
 
-      print('GET Status: ${response.statusCode}');
+      print('AddressService: GET Status: ${response.statusCode}');
       final body = jsonDecode(response.body);
 
-      if (response.statusCode == 200 &&
-          body['success'] == true &&
-          body['data'] is List) {
-        final List data = body['data'];
-        print('Fetched ${data.length} addresses.');
-        return data.map((e) => AddressModel.fromJson(e)).toList();
+      if (response.statusCode == 200 && body['success'] == true) {
+        // The view endpoint returns user data which contains an 'address' list
+        if (body['data'] is Map && body['data']['address'] is List) {
+          final List addressListJson = body['data']['address'];
+          print('AddressService: Fetched ${addressListJson.length} addresses.');
+          return addressListJson.map((e) => AddressModel.fromJson(e)).toList();
+        } else {
+          print('AddressService: Unexpected format for fetch response data: $body');
+          _showError('Error', 'Failed to parse address data.');
+          return [];
+        }
       }
 
       final errorMsg = body['message'] ?? 'Failed to fetch addresses.';
       _showError('Error', errorMsg);
     } catch (e) {
-      print('Exception: $e');
+      print('AddressService: Exception during fetch: $e');
       _showError('Network Error', 'Unable to connect to server.');
     }
-
     return [];
   }
 
@@ -69,7 +74,6 @@ class AddressService extends GetxService {
       colorText: Colors.white,
     );
   }
-
 
   Future<AddressModel?> addAddress(AddressModel address) async {
     final token = _getAccessToken();
@@ -92,26 +96,38 @@ class AddressService extends GetxService {
       );
 
       print('AddressService: POST Status ${response.statusCode}');
+      print('AddressService: Raw response body on add: ${response.body}'); // Keep for debugging
+
       if (response.statusCode == 200 || response.statusCode == 201) {
         final body = jsonDecode(response.body);
-        if (body['success'] == true && body['data'] != null) {
-          Get.snackbar('Success', 'Address added successfully!',
-              snackPosition: SnackPosition.BOTTOM,
-              backgroundColor: Colors.green.shade600,
-              colorText: Colors.white);
-          print('AddressService: Address added successfully: ${body['data']['_id']}');
-          return AddressModel.fromJson(body['data']);
+
+        if (body['success'] == true && body['data'] is Map) {
+          final userData = body['data'];
+          // CRITICAL FIX: Extract the address list from userData
+          if (userData['address'] is List && userData['address'].isNotEmpty) {
+            // Assuming the newly added address is the last one in the list
+            final newAddressJson = userData['address'].last;
+            Get.snackbar('Success', 'Address added successfully!',
+                snackPosition: SnackPosition.BOTTOM,
+                backgroundColor: Colors.green.shade600,
+                colorText: Colors.white);
+            print('AddressService: Address added successfully (parsed from list): ${newAddressJson['_id']}');
+            return AddressModel.fromJson(newAddressJson); // Pass the correct individual address map
+          } else {
+            print('AddressService: Add response data missing address list or empty: $body');
+            _showError('Error', 'Address added but details not returned correctly.');
+            return null; // Data structure not as expected
+          }
         } else {
-          print('AddressService: Unexpected response format for add: $body');
-          Get.snackbar('Error', 'Failed to add address. Invalid response format.',
-              snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red.shade600, colorText: Colors.white);
+          print('AddressService: Unexpected response format for add success: $body');
+          _showError('Error', 'Failed to add address. Invalid response format.');
+          return null; // Success true but data is null or not a Map
         }
       } else if (response.statusCode == 401) {
         print('AddressService: Unauthorized access (401) - Token expired or invalid.');
-        Get.snackbar('Session Expired', 'Please log in again.',
-            snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red.shade600, colorText: Colors.white);
-      }
-      else {
+        _showError('Session Expired', 'Please log in again.');
+        return null;
+      } else {
         String errorMessage = 'Failed to add address';
         try {
           final errorBody = jsonDecode(response.body);
@@ -122,17 +138,13 @@ class AddressService extends GetxService {
           errorMessage = 'Server error (Status: ${response.statusCode})';
         }
         print('AddressService: Failed to add address. Status ${response.statusCode}, Body: ${response.body}');
-        Get.snackbar('Error', errorMessage,
-            snackPosition: SnackPosition.BOTTOM, backgroundColor: Colors.red.shade600, colorText: Colors.white);
+        _showError('Error', errorMessage);
+        return null;
       }
     } catch (e) {
-      print('AddressService: Exception in POST: $e');
-      Get.snackbar('Network Error', 'Failed to connect to server.',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red.shade600,
-          colorText: Colors.white);
+      print('AddressService: Exception in POST (addAddress): $e');
+      _showError('Network Error', 'Failed to connect to server.');
+      return null;
     }
-
-    return null;
   }
 }

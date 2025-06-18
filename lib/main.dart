@@ -17,8 +17,12 @@ import 'package:mobiking/app/services/login_service.dart';
 import 'package:mobiking/app/services/order_service.dart';
 
 import 'app/controllers/Home_controller.dart';
-import 'app/modules/login/login_screen.dart'; // Assuming PhoneAuthScreen is here
-import 'app/widgets/CategoryTab.dart'; // Assuming TabControllerGetX is here
+// Correct import paths for new screens/controllers/services
+import 'app/modules/login/login_screen.dart';
+import 'app/widgets/CategoryTab.dart';
+import 'app/services/connectivity_service.dart'; // NEW
+import 'app/controllers/connectivity_controller.dart'; // NEW
+import 'app/modules/no_network/no_network_screen.dart'; // NEW
 
 // Make sure TabControllerGetX is defined or imported correctly.
 // For example, if it's in CategoryTab.dart, that import is fine.
@@ -44,6 +48,7 @@ Future<void> main() async {
   Get.put(LoginService());
   Get.put(OrderService());
   Get.put(AddressService());
+  Get.put(ConnectivityService()); // NEW: Initialize ConnectivityService
 
   // Controllers (in order of dependency)
   Get.put(AddressController());
@@ -54,8 +59,8 @@ Future<void> main() async {
   Get.put(SubCategoryController());
   Get.put(WishlistController());
   Get.put(LoginController());
-  // Ensure TabControllerGetX is indeed a GetxController and is initialized
   Get.put(TabControllerGetX());
+  Get.put(ConnectivityController()); // NEW: Initialize ConnectivityController
 
 
   // OrderController (depends on OrderService, CartController, AddressController)
@@ -71,6 +76,9 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Get the ConnectivityController instance
+    final ConnectivityController connectivityController = Get.find<ConnectivityController>();
+
     return GetMaterialApp(
       title: 'Mobiking',
       debugShowCheckedModeBanner: false,
@@ -78,7 +86,19 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
-      home: PhoneAuthScreen(), // Your starting screen
+      // Home now conditionally displays based on connectivity
+      home: Obx(() {
+        if (connectivityController.isConnected.value) {
+          return PhoneAuthScreen(); // Your normal starting screen
+        } else {
+          return NoNetworkScreen(
+            onRetry: () {
+              // When RETRY is pressed, attempt to recheck connectivity
+              connectivityController.retryConnection();
+            },
+          );
+        }
+      }),
     );
   }
 }
