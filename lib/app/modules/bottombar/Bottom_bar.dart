@@ -1,20 +1,21 @@
 // lib/app/modules/main_container/main_container_screen.dart
+
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // Import for SystemChrome
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:google_fonts/google_fonts.dart';
-
-
 import 'package:mobiking/app/themes/app_theme.dart';
+import 'package:mobiking/app/controllers/system_ui_controller.dart';
 
-import 'package:mobiking/app/modules/cart/cart_bottom_dialoge.dart';
+// IMPORTANT: Ensure this import is correct based on where your CartScreen is located.
+// If it was cart_bottom_dialoge.dart previously, and now it's CartScreen,
+// adjust the path accordingly if needed. Assuming 'CartScreen' is now the name of the widget.
+
 import 'package:mobiking/app/controllers/cart_controller.dart';
 import 'package:mobiking/app/modules/home/widgets/FloatingCartButton.dart';
 
 import '../../controllers/BottomNavController.dart';
-import '../../widgets/CustomBottomBar.dart'; // Ensure this is imported
-
-
+import '../../widgets/CustomBottomBar.dart';
+import '../cart/cart_bottom_dialoge.dart';
 
 class MainContainerScreen extends StatefulWidget {
   const MainContainerScreen({super.key});
@@ -26,46 +27,42 @@ class MainContainerScreen extends StatefulWidget {
 class _MainContainerScreenState extends State<MainContainerScreen> with WidgetsBindingObserver {
   final BottomNavController navController = Get.find<BottomNavController>();
   final CartController cartController = Get.find<CartController>();
+  // Initialize SystemUiController here if it's the first place it's needed globally
+  // or ensure it's put elsewhere (e.g., in your App's main binding)
+  final SystemUiController systemUiController = Get.put(SystemUiController());
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _setSystemUiMode();
+    // Initialize the system UI style based on the current systemUiController's value.
+    // This value would have been set by BottomNavController's onInit based on selectedIndex.
+    SystemChrome.setSystemUIOverlayStyle(systemUiController.currentUiStyle.value);
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    // Optional: Restore to default UI mode when the app is completely closed or this screen is removed.
-    // However, for persistent global hiding, you might just leave it hidden.
-    // SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    // When the main container disposes, revert to a clean default
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle());
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Reapply UI mode if app comes back from background (important for Android)
     if (state == AppLifecycleState.resumed) {
-      _setSystemUiMode();
+      // When app resumes, reapply the *current* style from the controller
+      SystemChrome.setSystemUIOverlayStyle(systemUiController.currentUiStyle.value);
     }
-  }
-
-  void _setSystemUiMode() {
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.leanBack);
-    // Apply a transparent style so the hidden bars don't show a color when briefly visible
-    SystemChrome.setSystemUIOverlayStyle(
-      const SystemUiOverlayStyle(
-        systemNavigationBarColor: Colors.transparent,
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light, // For dark content behind it
-        systemNavigationBarIconBrightness: Brightness.light,
-      ),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
+    const double customBottomBarContentHeight = 65.0; // From CustomBottomBar
+    final double bottomSafeAreaPadding = MediaQuery.of(context).padding.bottom;
+    final double totalCustomBottomBarHeight = customBottomBarContentHeight + bottomSafeAreaPadding;
+
     return Theme(
       data: AppTheme.lightTheme,
       child: Scaffold(
@@ -77,70 +74,66 @@ class _MainContainerScreenState extends State<MainContainerScreen> with WidgetsB
           ),
         ),
         bottomNavigationBar: const CustomBottomBar(),
-        // --- Floating Action Button (Custom FloatingCartButton with conditional visibility) ---
         floatingActionButton: Obx(() {
-          // Get the current selected index from the navigation controller
           final currentTabIndex = navController.selectedIndex.value;
-
-          // Define the index of the Profile screen (adjust if your Profile tab is at a different index)
-          // Assuming your tabs are (0: Home, 1: Categories, 2: My Orders, 3: Profile)
           const int profileTabIndex = 3;
 
-          // If the current tab is the Profile screen, hide the Floating Action Button
+          // Don't show FAB on the Profile tab
           if (currentTabIndex == profileTabIndex) {
             return const SizedBox.shrink();
           }
 
-          // Existing logic for showing the FloatingCartButton based on cart items
-          final cartController = Get.find<CartController>();
+          // Don't show FAB if cart is empty
           final totalItemsInCart = cartController.totalCartItemsCount;
-
           if (totalItemsInCart == 0) {
             return const SizedBox.shrink();
           }
 
+          // Get product images for the FAB
           final List<String> imageUrls = cartController.cartItems.take(3).map((item) {
             final product = item['productId'];
             String? imageUrl;
 
-            if (product is Map && product.containsKey('images')) {
+            if (product is Map) {
               final imagesData = product['images'];
-
-              if (imagesData is String) {
-                imageUrl = imagesData;
-              } else if (imagesData is List && imagesData.isNotEmpty) {
-                final firstImageData = imagesData[0];
-                if (firstImageData is String) {
-                  imageUrl = firstImageData;
-                } else if (firstImageData is Map && firstImageData.containsKey('url')) {
-                  imageUrl = firstImageData['url'] as String?;
+              if (imagesData is List && imagesData.isNotEmpty) {
+                final firstImage = imagesData[0];
+                if (firstImage is String) {
+                  imageUrl = firstImage;
+                } else if (firstImage is Map) {
+                  imageUrl = firstImage['url'] as String?;
                 }
+              } else if (imagesData is String) {
+                imageUrl = imagesData;
               }
             }
             return imageUrl ?? 'https://placehold.co/50x50/cccccc/ffffff?text=No+Img';
           }).toList();
 
+          // CORRECTED: Calculate fabBottomMargin to float above the bottom bar
+          final double fabBottomMargin = 0.5 ; // 16px padding + bottom bar height
+
           return Container(
-            height: 56,
-            margin: const EdgeInsets.only(left: 25, right: 25,bottom: 70),
+            margin: EdgeInsets.only(left: 16, right: 16, bottom: fabBottomMargin),
             child: FloatingCartButton(
               label: "View Cart",
               productImageUrls: imageUrls,
               itemCount: totalItemsInCart,
               onTap: () {
                 showModalBottomSheet(
-                  context: Get.context!,
-                  isScrollControlled: true,
-                  backgroundColor: Colors.transparent,
+                  context: Get.context!, // Use Get.context! for convenience
+                  isScrollControlled: true, // Allows the sheet to take up more height
+                  backgroundColor: Colors.transparent, // To show the custom rounded corners/background
                   builder: (context) {
                     return FractionallySizedBox(
-                      heightFactor: 0.8,
+                      heightFactor: 0.8, // Make it occupy 80% of screen height
                       child: Container(
                         decoration: const BoxDecoration(
-                          color: Color(0xFF2C2C2E), // Your desired background color for the sheet content
+                          color: AppColors.white, // Background color for the cart sheet content
                           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
                         ),
-                        child: const CartScreen(), // Assuming CartScreen is correct
+                        // Display the actual CartScreen content here
+                        child: CartScreen(), // <--- THIS IS THE KEY CHANGE
                       ),
                     );
                   },
@@ -149,8 +142,7 @@ class _MainContainerScreenState extends State<MainContainerScreen> with WidgetsB
             ),
           );
         }),
-        // IMPORTANT: Remove floatingActionButtonLocation when using Positioned directly inside floatingActionButton
-         floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       ),
     );
   }

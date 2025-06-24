@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:get/get.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:shimmer/shimmer.dart';
-
+import 'package:shimmer/shimmer.dart'; // Keep shimmer for loading effect
 
 import '../../controllers/category_controller.dart';
 import '../../controllers/sub_category_controller.dart' show SubCategoryController;
+import '../../themes/app_theme.dart'; // Import your AppTheme and AppColors
 import 'widgets/CategoryTile.dart'; // Ensure CategoryTile is properly defined and imported
 
 class CategorySectionScreen extends StatelessWidget {
@@ -16,39 +16,42 @@ class CategorySectionScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final TextTheme textTheme = Theme.of(context).textTheme;
+
     return Scaffold(
-      backgroundColor: Colors.grey[50], // Lighter background for a cleaner look
+      backgroundColor: AppColors.neutralBackground, // Blinkit-like background
       appBar: AppBar(
         title: Text(
           "Categories",
-          style: GoogleFonts.poppins(
-            fontSize: 22, // Slightly larger for app bar title
-            fontWeight: FontWeight.w700, // Bolder
-            color: Colors.black87,
+          style: textTheme.titleLarge?.copyWith(
+            color: AppColors.textDark, // Dark text color for App Bar
+            fontWeight: FontWeight.w700, // Bold title
           ),
         ),
-        centerTitle: true,
-        backgroundColor: Colors.white, // White app bar for a modern feel
-        elevation: 1, // Subtle shadow for app bar
-        foregroundColor: Colors.black87,
-        automaticallyImplyLeading: false,
+        centerTitle: false, // Title aligned to the left
+        backgroundColor: AppColors.white, // White app bar for clean look
+        elevation: 0.5, // Subtle shadow for app bar
+        foregroundColor: AppColors.textDark, // Dark back arrow/icons
+        automaticallyImplyLeading: false, // If this is a bottom nav tab
       ),
       body: Obx(() {
         if (categoryController.isLoading.value) {
-          return _buildLoadingState(); // Show loading state
+          return _buildLoadingState(context);
         } else {
           final allCategories = categoryController.categories;
           final availableSubCategories = subCategoryController.subCategories;
 
           final availableSubCatIds = availableSubCategories.map((e) => e.id).toSet();
 
+          // Filter categories to only show those that have at least one associated sub-category
+          // that exists in the availableSubCategories list.
           final filteredCategories = allCategories.where((category) {
-            final subCatIds = List<String>.from(category.subCategoryIds ?? []);
-            return subCatIds.any((id) => availableSubCatIds.contains(id));
+            final subCatIdsInThisCategory = List<String>.from(category.subCategoryIds ?? []);
+            return subCatIdsInThisCategory.any((id) => availableSubCatIds.contains(id));
           }).toList();
 
           if (filteredCategories.isEmpty) {
-            return _buildEmptyState(); // Show empty state
+            return _buildEmptyState(context);
           }
 
           return SingleChildScrollView(
@@ -56,127 +59,128 @@ class CategorySectionScreen extends StatelessWidget {
               children: [
                 ListView.builder(
                   shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
+                  physics: const NeverScrollableScrollPhysics(), // Prevent inner scroll
                   itemCount: filteredCategories.length,
-                  padding: const EdgeInsets.symmetric(vertical: 8), // Adjusted padding
+                  padding: const EdgeInsets.symmetric(vertical: 8), // Padding around the whole list of sections
                   itemBuilder: (context, index) {
                     final category = filteredCategories[index];
                     final String title = category.name ?? "Unnamed Category";
 
+                    // Get sub-categories actually linked to this main category and are available
                     final matchingSubCategories = availableSubCategories
                         .where((sub) => (category.subCategoryIds ?? []).contains(sub.id))
                         .toList();
 
-                    // Only show category section if there are matching sub-categories
                     if (matchingSubCategories.isEmpty) {
-                      return const SizedBox.shrink();
+                      return const SizedBox.shrink(); // Hide category section if no sub-categories
                     }
 
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // --- Section Header ---
+                        // --- Section Header (e.g., "Fruits & Vegetables") ---
                         Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 24, 16, 12), // Top padding for separation
+                          padding: const EdgeInsets.fromLTRB(16, 20, 16, 12), // Adjusted padding
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
                                 title,
-                                style: GoogleFonts.poppins(
-                                  fontSize: 20, // Larger and bolder for section title
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.black87,
+                                style: textTheme.titleLarge?.copyWith( // titleLarge for section titles
+                                  color: AppColors.textDark,
+                                  fontWeight: FontWeight.w700, // Bold
                                 ),
                               ),
                               TextButton(
                                 onPressed: () {
-                                  // TODO: Navigate to full category page
-                                  Get.toNamed('/category_products', arguments: category); // Example navigation
+                                  // TODO: Implement navigation to a page showing ALL products/subcategories for this category
+                                  Get.toNamed('/category_products', arguments: category);
                                 },
                                 style: TextButton.styleFrom(
-                                  foregroundColor: Theme.of(context).primaryColor, // Use primary color
-                                  textStyle: GoogleFonts.poppins(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
+                                  foregroundColor: AppColors.success, // Blinkit green for "See All"
+                                  textStyle: textTheme.labelLarge?.copyWith( // labelLarge for "See All"
+                                    fontWeight: FontWeight.w600, // Semi-bold
+                                  ),
+                                  minimumSize: Size.zero, // Remove default min button size
+                                  padding: EdgeInsets.zero, // Remove default padding
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap, // Shrink tap target
+                                ),
+                                child: Text(
+                                  "See All",
+                                  style: textTheme.labelLarge?.copyWith(
+                                    color: AppColors.success,
                                   ),
                                 ),
-                                child: const Text("See All"),
                               )
                             ],
                           ),
                         ),
 
-                        // --- Horizontal Product List ---
+                        // --- Horizontal Sub-Category/Product List ---
                         SizedBox(
-                          height: 180, // Consistent height for product tiles
+                          height: 120, // Reduced height for more compact horizontal list
                           child: ListView.separated(
                             scrollDirection: Axis.horizontal,
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            padding: const EdgeInsets.symmetric(horizontal: 16), // Horizontal padding
                             itemCount: matchingSubCategories.length,
-                            separatorBuilder: (_, __) => const SizedBox(width: 12),
+                            separatorBuilder: (_, __) => const SizedBox(width: 10), // Tighter separation
                             itemBuilder: (context, i) {
                               final sub = matchingSubCategories[i];
                               final image = (sub.photos?.isNotEmpty ?? false)
                                   ? sub.photos![0]
-                                  : "https://placehold.co/150x150/E0E0E0/A0A0A0?text=No+Image"; // Better placeholder
+                                  : "https://via.placeholder.com/150x150/E0E0E0/A0A0A0?text=No+Image";
 
-                              return ProductTile( // Corrected to CategoryTile
+                              return CategoryTile( // Use the new CategoryTile
                                 title: sub.name ?? 'Unknown',
                                 imageUrl: image,
                                 onTap: () {
-                                  // TODO: Navigate to sub-category/product list page
-                                  // Example: Get.toNamed('/sub_category_products', arguments: sub);
+                                  // TODO: Navigate to specific sub-category products or details
+                                  print('Tapped on sub-category: ${sub.name}');
                                 },
                               );
                             },
                           ),
                         ),
-                        const SizedBox(height: 16), // Spacing after each horizontal list
+                        const SizedBox(height: 16), // Space after horizontal list before next section
                       ],
                     );
                   },
                 ),
                 // --- Mobiking Branding Section ---
-                const SizedBox(height: 40), // Increased spacing before branding
+                const SizedBox(height: 40),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(12.0, 0.0, 24.0, 0), // Adjust padding for left alignment
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 40), // Consistent horizontal padding, increased bottom
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start, // Align content to the left
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         "Mobiking",
-                        textAlign: TextAlign.left, // Explicitly left align
-                        style: GoogleFonts.poppins( // Use GoogleFonts for Poppins
-                          fontSize: 48, // Slightly larger for impact
-                          fontWeight: FontWeight.w800, // Very bold
-                          color: Colors.grey, // Light grey color for "wall text" effect
-                          letterSpacing: -2.0, // Tighter letter spacing
-                          height: 1.0, // Reduce line height for compactness
+                        textAlign: TextAlign.left,
+                        style: textTheme.displayLarge?.copyWith(
+                          color: AppColors.textLight.withOpacity(0.5), // Lighter, more subtle branding
+                          letterSpacing: -1.0, // Reduced letter spacing
+                          height: 1.0,
                         ),
                       ),
-                      const SizedBox(height: 10), // Adjust spacing
+                      const SizedBox(height: 8), // Tighter spacing
                       Text(
                         "Your Wholesale Partner",
-                        textAlign: TextAlign.left, // Explicitly left align
-                        style: GoogleFonts.poppins(
-                          fontSize: 20, // Slightly larger
-                          fontWeight: FontWeight.w600,
-                          color: Colors.grey.shade700, // Darker grey for contrast
-                          height: 1.2, // Maintain readability
+                        textAlign: TextAlign.left,
+                        style: textTheme.headlineSmall?.copyWith( // Using headlineSmall
+                          color: AppColors.textLight.withOpacity(0.6),
+                          height: 1.2,
                         ),
                       ),
-                      const SizedBox(height: 16), // Adjust spacing
+                      const SizedBox(height: 12), // Tighter spacing
                       Text(
                         "Buy in bulk, save big. Get the best deals on mobile phones and accessories, delivered directly to your doorstep.",
-                        textAlign: TextAlign.left, // Explicitly left align
-                        style: GoogleFonts.poppins(
-                          fontSize: 15, // Slightly larger for readability
-                          color: Colors.grey.shade600, // Medium grey
-                          height: 1.4, // Good line height for body text
+                        textAlign: TextAlign.left,
+                        style: textTheme.bodyLarge?.copyWith(
+                          color: AppColors.textLight.withOpacity(0.7),
+                          height: 1.4,
                         ),
                       ),
-                      const SizedBox(height: 60), // Extra space at the very bottom
+                      const SizedBox(height: 60), // Space at bottom
                     ],
                   ),
                 ),
@@ -188,9 +192,12 @@ class CategorySectionScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildLoadingState() {
+  // --- Loading State ---
+  Widget _buildLoadingState(BuildContext context) {
+    final TextTheme textTheme = Theme.of(context).textTheme;
+
     return ListView.builder(
-      itemCount: 3, // Show 3 placeholder sections
+      itemCount: 3, // Show 3 shimmer sections
       padding: const EdgeInsets.symmetric(vertical: 16),
       itemBuilder: (context, index) {
         return Padding(
@@ -200,32 +207,35 @@ class CategorySectionScreen extends StatelessWidget {
             children: [
               // Shimmer for section title
               Shimmer.fromColors(
-                baseColor: Colors.grey[300]!,
-                highlightColor: Colors.grey[100]!,
+                baseColor: Colors.grey[200]!, // Lighter base color
+                highlightColor: Colors.grey[50]!, // Even lighter highlight
                 child: Container(
-                  width: 150,
-                  height: 24,
-                  color: Colors.white,
+                  width: 180, // Wider shimmer for title
+                  height: textTheme.titleLarge?.fontSize ?? 22, // Use titleLarge font size
+                  // White shimmer background
+                 decoration: BoxDecoration(
+                   color: AppColors.white,borderRadius: BorderRadius.circular(4),
+                 ), // Slightly rounded corners
                 ),
               ),
               const SizedBox(height: 16),
               // Shimmer for horizontal list
               SizedBox(
-                height: 180,
+                height: 120, // Matches CategoryTile height
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
-                  itemCount: 4, // Show 4 placeholder tiles
-                  separatorBuilder: (_, __) => const SizedBox(width: 12),
+                  itemCount: 4,
+                  separatorBuilder: (_, __) => const SizedBox(width: 10),
                   itemBuilder: (context, i) {
                     return Shimmer.fromColors(
-                      baseColor: Colors.grey[300]!,
-                      highlightColor: Colors.grey[100]!,
+                      baseColor: Colors.grey[200]!,
+                      highlightColor: Colors.grey[50]!,
                       child: Container(
-                        width: 120,
-                        height: 180,
+                        width: 90, // Matches CategoryTile width
+                        height: 120, // Matches CategoryTile height
                         decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
+                          color: AppColors.white,
+                          borderRadius: BorderRadius.circular(10), // Matches CategoryTile border radius
                         ),
                       ),
                     );
@@ -240,44 +250,49 @@ class CategorySectionScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildEmptyState() {
+  // --- Empty State ---
+  Widget _buildEmptyState(BuildContext context) {
+    final TextTheme textTheme = Theme.of(context).textTheme;
+
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.category_outlined, size: 80, color: Colors.grey[400]),
-          const SizedBox(height: 16),
-          Text(
-            'No categories available at the moment.',
-            style: GoogleFonts.poppins(
-              fontSize: 18,
-              fontWeight: FontWeight.w500,
-              color: Colors.grey[600],
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.category_outlined, size: 80, color: AppColors.textLight.withOpacity(0.6)),
+            const SizedBox(height: 16),
+            Text(
+              'No categories available at the moment.',
+              style: textTheme.headlineSmall?.copyWith(
+                color: AppColors.textMedium, // Softer color for empty state message
+                fontWeight: FontWeight.w600,
+              ),
+              textAlign: TextAlign.center,
             ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Please check back later!',
-            style: GoogleFonts.poppins(
-              fontSize: 16,
-              color: Colors.grey[500],
+            const SizedBox(height: 8),
+            Text(
+              'Please check back later!',
+              style: textTheme.bodyMedium?.copyWith(
+                color: AppColors.textLight,
+              ),
+              textAlign: TextAlign.center,
             ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 24),
-          ElevatedButton.icon(
-            onPressed: () => categoryController.fetchCategories(), // Retry button
-            icon: const Icon(Icons.refresh),
-            label: Text('Retry', style: GoogleFonts.poppins(fontSize: 16)),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(Get.context!).primaryColor,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: () => categoryController.fetchCategories(),
+              icon: const Icon(Icons.refresh, color: AppColors.white),
+              label: Text('Retry', style: textTheme.labelLarge?.copyWith(color: AppColors.white)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.success, // Blinkit green button
+                foregroundColor: AppColors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                elevation: 2,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

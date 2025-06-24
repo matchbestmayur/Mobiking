@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart'; // Import for Colors, IconData
+import 'package:flutter/material.dart'; // Keep for Colors, IconData
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import '../services/cart_service.dart';
@@ -8,6 +8,9 @@ class CartController extends GetxController {
   RxMap<String, dynamic> cartData = <String, dynamic>{}.obs;
   var isLoading = false.obs;
   final box = GetStorage();
+
+  // --- REMOVED: All animation-related fields and methods ---
+
 
   @override
   void onInit() {
@@ -57,7 +60,22 @@ class CartController extends GetxController {
     }
   }
 
-  // **** MODIFIED: This method now reads the 'quantity' field directly ****
+  Map<String, int> getCartItemsForProduct({required String productId}) {
+    final Map<String, int> productVariantsInCart = {};
+    for (var item in cartItems) {
+      final itemProductId = item['productId']?['_id'];
+      if (itemProductId == productId) {
+        final itemVariantName = item['variantName'] as String? ?? 'Default'; // Use 'Default' or handle as needed
+        final int quantity = item['quantity'] as int? ?? 0;
+        if (quantity > 0) {
+          productVariantsInCart[itemVariantName] = quantity;
+        }
+      }
+    }
+    print('🛒 CartController: Variants in cart for product $productId: $productVariantsInCart');
+    return productVariantsInCart;
+  }
+
   int getVariantQuantity({required String productId, required String variantName}) {
     for (var item in cartItems) {
       final itemProductId = item['productId']?['_id'];
@@ -73,7 +91,6 @@ class CartController extends GetxController {
     return 0; // Return 0 if the item is not found in the cart
   }
 
-  // **** MODIFIED: This method now sums quantities for a product, handling multiple variants ****
   int getTotalQuantityForProduct({required String productId}) {
     int totalQuantity = 0;
     for (var item in cartItems) {
@@ -86,7 +103,6 @@ class CartController extends GetxController {
     return totalQuantity;
   }
 
-  // **** MODIFIED: This getter now sums up quantities from each item ****
   int get totalCartItemsCount {
     int totalCount = 0;
     for (var item in cartItems) {
@@ -96,8 +112,6 @@ class CartController extends GetxController {
     return totalCount;
   }
 
-
-  // **** MODIFIED: This getter now sums up prices * quantities from backend ****
   double get totalCartValue {
     double total = 0.0;
     for (var item in cartItems) {
@@ -109,7 +123,8 @@ class CartController extends GetxController {
     return total;
   }
 
-  // --- Cart Operations (these remain largely the same, they interact with backend logic) ---
+  // --- Cart Operations ---
+  // MODIFIED: Removed animation-related parameters from addToCart
   Future<bool> addToCart({
     required String productId,
     required String variantName,

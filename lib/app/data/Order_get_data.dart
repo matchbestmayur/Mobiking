@@ -70,6 +70,7 @@ class CreateOrderRequestModel {
   final String method; // Payment method (e.g., 'COD')
   final List<CreateOrderItemRequestModel> items; // List of order items for the request
   final String? addressId; // <--- NEW FIELD: The ID of the selected address
+  final bool isAppOrder; // <--- NEW FIELD: Added for app identification
 
   CreateOrderRequestModel({
     required this.userId,
@@ -86,6 +87,7 @@ class CreateOrderRequestModel {
     required this.method,
     required this.items,
     this.addressId, // <--- ADDED TO CONSTRUCTOR
+    this.isAppOrder = true, // <--- ADDED TO CONSTRUCTOR with default true
   });
 
   Map<String, dynamic> toJson() {
@@ -103,7 +105,8 @@ class CreateOrderRequestModel {
       'address': address,
       'method': method,
       'items': items.map((item) => item.toJson()).toList(),
-      if (addressId != null) 'addressId': addressId, // Include only if addressId is not null
+      if (addressId != null) 'addressId': addressId,
+      'isAppOrder': isAppOrder, // <--- ADDED TO JSON METHOD
     };
   }
 }

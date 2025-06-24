@@ -80,7 +80,7 @@ class ProductVariantBottomSheet extends StatelessWidget {
               itemBuilder: (context, index) {
                 final entry = variantEntries[index];
                 final variantName = entry.key;
-                final variantStock = entry.value;
+                final variantStock = entry.value; // Keep this for canPerformAction check
 
                 final int currentVariantQuantity = cartController.getVariantQuantity(
                   productId: product.id,
@@ -148,15 +148,28 @@ class ProductVariantBottomSheet extends StatelessWidget {
                                     color: canPerformAction ? Colors.black : Colors.grey.shade500,
                                   ),
                                 ),
+                                // Commented out the line that displayed stock/in-cart quantity
+                                /*
                                 Text(
                                   isAdding
-                                      ? 'Available: ${variantStock > 0 ? variantStock : 'Out of Stock'}' // Improved stock display
+                                      ? 'Available: ${variantStock > 0 ? variantStock : 'Out of Stock'}'
                                       : 'In Cart: $currentVariantQuantity',
                                   style: GoogleFonts.poppins(
                                     fontSize: 14,
                                     color: canPerformAction ? Colors.grey[700] : Colors.grey.shade500,
                                   ),
                                 ),
+                                */
+                                // If you still want to show "In Cart" quantity when removing,
+                                // but not "Available" when adding:
+                                if (!isAdding) // Only show 'In Cart' if it's a remove operation
+                                  Text(
+                                    'In Cart: $currentVariantQuantity',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 14,
+                                      color: canPerformAction ? Colors.grey[700] : Colors.grey.shade500,
+                                    ),
+                                  ),
                               ],
                             ),
                           ),

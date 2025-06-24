@@ -1,50 +1,48 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart'; // Import Get package
-import 'package:mobiking/app/themes/app_theme.dart';
-
 
 import '../../controllers/login_controller.dart'; // Import your LoginController
+import 'package:mobiking/app/themes/app_theme.dart'; // Import your AppTheme
 
 void showLogoutDialog(BuildContext context) {
   // Find the LoginController instance
   final LoginController loginController = Get.find<LoginController>();
+  final TextTheme textTheme = Theme.of(context).textTheme; // Get TextTheme
 
   showDialog(
     context: context,
     builder: (context) => AlertDialog(
-      backgroundColor: AppColors.neutralBackground, // Neutral background
+      backgroundColor: AppColors.neutralBackground, // Use AppColors
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
       ),
       title: Row(
-        children: const [
-          Icon(Icons.logout, color: Colors.deepPurple),
-          SizedBox(width: 8),
+        children: [
+          Icon(Icons.logout, color: AppColors.primaryPurple), // Use AppColors
+          const SizedBox(width: 8),
           Text(
             'Logout',
-            style: TextStyle(
+            style: textTheme.titleMedium?.copyWith( // Use titleMedium
               fontWeight: FontWeight.bold,
-              fontSize: 20,
-              color: Colors.deepPurple,
+              color: AppColors.primaryPurple, // Use AppColors
             ),
           ),
         ],
       ),
-      content: const Text(
+      content: Text(
         'Are you sure you want to logout from your account?',
-        style: TextStyle(
-          fontSize: 16,
-          color: Colors.black54,
+        style: textTheme.bodyLarge?.copyWith( // Use bodyLarge
+          color: AppColors.textDark, // Use AppColors for consistent dark text
         ),
       ),
       actionsPadding: const EdgeInsets.only(right: 12, bottom: 8),
       actions: [
         TextButton.icon(
           onPressed: () => Navigator.of(context).pop(),
-          icon: const Icon(Icons.cancel, color: Colors.grey),
-          label: const Text(
+          icon: Icon(Icons.cancel, color: AppColors.textLight), // Use AppColors
+          label: Text(
             'Cancel',
-            style: TextStyle(color: Colors.grey),
+            style: textTheme.labelLarge?.copyWith(color: AppColors.textLight), // Use labelLarge
           ),
         ),
         ElevatedButton.icon(
@@ -52,11 +50,14 @@ void showLogoutDialog(BuildContext context) {
             Navigator.of(context).pop(); // Close dialog immediately
             loginController.logout(); // Call the logout method from the controller
           },
-          icon: const Icon(Icons.check_circle_outline),
-          label: const Text('Logout'),
+          icon: const Icon(Icons.check_circle_outline, color: Colors.white), // Ensure icon color is white for contrast
+          label: Text(
+            'Logout',
+            style: textTheme.labelLarge?.copyWith(color: Colors.white), // Use labelLarge
+          ),
           style: ElevatedButton.styleFrom(
-            foregroundColor: Colors.white,
-            backgroundColor: AppColors.darkPurple,
+            foregroundColor: Colors.white, // This covers the label and icon color
+            backgroundColor: AppColors.danger, // Use AppColors for a clear "danger" action
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),

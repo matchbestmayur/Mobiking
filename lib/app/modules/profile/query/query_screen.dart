@@ -4,15 +4,16 @@ import 'dart:ui'; // Make sure this is imported
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
-import 'package:google_fonts/google_fonts.dart';
 
-import '../../../controllers/Query_Controller.dart';
-import '../../../data/QueryModel.dart';
-import '../../../themes/app_theme.dart';
-import 'AboutUsDialog.dart';
-import 'FaqDialog.dart';
-import 'Raise_query.dart'; // Your custom dialog
+import '../../../controllers/query_getx_controller.dart'; // Corrected import to QueryGetXController
+import '../../../data/QueryModel.dart'; // Use QueryModel from your manual JSON models
+import '../../../themes/app_theme.dart'; // Import your AppColors and AppTheme
+import 'AboutUsDialog.dart'; // Assuming this exists
+import 'FaqDialog.dart';     // Assuming this exists
 
+
+import 'Raise_query.dart';
+import 'query_detail_screen.dart'; // <--- NEW: Import the QueryDetailScreen
 
 class QueriesScreen extends StatefulWidget {
   const QueriesScreen({super.key});
@@ -22,25 +23,38 @@ class QueriesScreen extends StatefulWidget {
 }
 
 class _QueriesScreenState extends State<QueriesScreen> {
-  final QueryController queryController = Get.put(QueryController());
-  // IMPORTANT: Declare the TextEditingController here to persist its state
-  final TextEditingController _queryInputController = TextEditingController();
+  // Get the instance of your QueryGetXController
+  // Get.put() should ideally be done once in main.dart or a binding
+  // to ensure a single instance and proper lifecycle management.
+  // For simplicity in a single screen, it's often placed here for direct access.
+  final QueryGetXController queryController = Get.put(QueryGetXController());
+  final TextEditingController _quickQueryInputController = TextEditingController();
 
   @override
   void dispose() {
-    _queryInputController.dispose(); // Dispose the controller when the widget is removed
+    _quickQueryInputController.dispose(); // Dispose the controller when the widget is removed
     super.dispose();
+  }
+
+  // Added a method to show the Raise Query Dialog
+  void _showRaiseQueryDialog() {
+    Get.dialog(
+      const RaiseQueryDialog(), // onAddQuery is no longer needed as dialog handles GetX call internally
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    // Get the TextTheme from the current theme
+    final TextTheme textTheme = Theme.of(context).textTheme;
+
     return Scaffold(
       backgroundColor: AppColors.neutralBackground, // Light background for the overall screen
       body: CustomScrollView(
         slivers: [
           // Top Section: 'Talk with Support' and Quick Input
           SliverAppBar(
-            expandedHeight: 220.0, // Slightly increased height for more breathing room
+            expandedHeight: 220.0,
             floating: false,
             pinned: true,
             snap: false,
@@ -55,35 +69,36 @@ class _QueriesScreenState extends State<QueriesScreen> {
                     colors: [
                       AppColors.primaryPurple.withOpacity(0.08),
                       AppColors.primaryPurple.withOpacity(0.01),
-                      Colors.white.withOpacity(0.0),
+                      AppColors.white.withOpacity(0.0), // Use AppColors.white
                     ],
                   ),
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(24.0, 90.0, 24.0, 0), // Consistent horizontal padding, adjusted top
+                  padding: const EdgeInsets.fromLTRB(24.0, 90.0, 24.0, 0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         'Talk with Support',
-                        style: GoogleFonts.poppins(
-                          fontSize: 30, // Slightly larger title
-                          fontWeight: FontWeight.bold,
+                        // Use headlineLarge and override color if necessary
+                        style: textTheme.headlineLarge?.copyWith(
+                          fontSize: 30, // Override if AppTheme's headlineLarge is not 30
+                          fontWeight: FontWeight.bold, // Ensure bold remains
                           color: AppColors.textDark,
                         ),
                       ),
-                      const SizedBox(height: 20), // Increased space below title
+                      const SizedBox(height: 20),
                       // Prompt/Input Field
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10), // More vertical padding
+                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
                         decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(32), // More rounded
+                          color: AppColors.white, // Use AppColors.white
+                          borderRadius: BorderRadius.circular(32),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.08),
-                              blurRadius: 20, // Softer, wider blur
-                              offset: const Offset(0, 10), // Deeper shadow
+                              color: AppColors.textDark.withOpacity(0.08), // Use AppColors for consistency
+                              blurRadius: 20,
+                              offset: const Offset(0, 10),
                             ),
                           ],
                         ),
@@ -91,38 +106,48 @@ class _QueriesScreenState extends State<QueriesScreen> {
                           children: [
                             Expanded(
                               child: TextField(
-                                controller: _queryInputController, // Use the shared controller
+                                controller: _quickQueryInputController,
                                 decoration: InputDecoration(
                                   hintText: 'Ask a quick question...',
-                                  hintStyle: GoogleFonts.poppins(color: AppColors.textLight.withOpacity(0.7)),
+                                  // Use bodyMedium and override color/opacity
+                                  hintStyle: textTheme.bodyMedium?.copyWith(
+                                    color: AppColors.textLight.withOpacity(0.7),
+                                  ),
                                   border: InputBorder.none,
                                   isDense: true,
                                   contentPadding: EdgeInsets.zero,
                                 ),
-                                style: GoogleFonts.poppins(color: AppColors.textDark, fontSize: 16), // Slightly larger input text
+                                // Use bodyMedium style
+                                style: textTheme.bodyMedium?.copyWith(
+                                  fontSize: 16, // Override to 16 if bodyMedium is different
+                                  color: AppColors.textDark,
+                                ),
                                 cursorColor: AppColors.primaryPurple,
                               ),
                             ),
                             const SizedBox(width: 15),
-                            Icon(Icons.mic, color: AppColors.textLight.withOpacity(0.8)), // Slightly darker mic
+                            Icon(Icons.mic, color: AppColors.textLight.withOpacity(0.8)),
                             const SizedBox(width: 12),
                             GestureDetector(
                               onTap: () {
-                                // Handle sending the quick question
-                                if (_queryInputController.text.isNotEmpty) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('Quick question sent: "${_queryInputController.text}"')),
+                                if (_quickQueryInputController.text.isNotEmpty) {
+                                  // This is a quick question, not a formal query to the backend
+                                  Get.snackbar(
+                                    'Quick Question',
+                                    'Sent: "${_quickQueryInputController.text}"',
+                                    backgroundColor: AppColors.primaryPurple,
+                                    colorText: AppColors.white,
                                   );
-                                  _queryInputController.clear();
+                                  _quickQueryInputController.clear();
                                 }
                               },
                               child: Container(
-                                padding: const EdgeInsets.all(12), // Larger send button
+                                padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
                                   color: AppColors.accentNeon,
-                                  borderRadius: BorderRadius.circular(28), // Fully rounded
+                                  borderRadius: BorderRadius.circular(28),
                                 ),
-                                child: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
+                                child: const Icon(Icons.send_rounded, color: AppColors.white, size: 20),
                               ),
                             ),
                           ],
@@ -137,37 +162,34 @@ class _QueriesScreenState extends State<QueriesScreen> {
 
           // Quick Actions Section (Now with Glassmorphic background)
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16.0, 25.0, 16.0, 0), // Adjust top padding to create gap from header
+            padding: const EdgeInsets.fromLTRB(16.0, 25.0, 16.0, 0),
             sliver: SliverList(
               delegate: SliverChildListDelegate(
                 [
-                  // START Glassmorphic effect for Quick Actions
-                  ClipRRect( // Crucial for clipping the blur to rounded corners
-                    borderRadius: const BorderRadius.all(Radius.circular(18)), // Match Container's border radius
+                  ClipRRect(
+                    borderRadius: const BorderRadius.all(Radius.circular(18)),
                     child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10), // Apply blur
+                      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                       child: Container(
                         decoration: BoxDecoration(
-                          // Use a translucent color from your theme for the glass effect
-                          color: AppColors.primaryPurple.withOpacity(0.1), // Using a translucent purple
-                          borderRadius: const BorderRadius.all(Radius.circular(18)), // Rounded corners for the card
-                          // Subtle border using a slightly more opaque version of the same color
+                          color: AppColors.primaryPurple.withOpacity(0.1),
+                          borderRadius: const BorderRadius.all(Radius.circular(18)),
                           border: Border.all(color: AppColors.primaryPurple.withOpacity(0.3), width: 1.0),
                         ),
-                        // Consistent horizontal padding for quick actions content
                         padding: const EdgeInsets.fromLTRB(16.0, 30.0, 16.0, 30.0),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               'Quick Actions',
-                              style: GoogleFonts.poppins(
-                                fontSize: 20, // Slightly larger section title
+                              // Use titleLarge and override color if necessary
+                              style: textTheme.titleLarge?.copyWith(
+                                fontSize: 20, // Override if AppTheme's titleLarge is not 20
                                 fontWeight: FontWeight.w600,
-                                color: AppColors.textDark, // Remains dark for readability on light glass
+                                color: AppColors.textDark,
                               ),
                             ),
-                            const SizedBox(height: 22), // More space below title
+                            const SizedBox(height: 22),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceAround,
                               children: [
@@ -175,36 +197,26 @@ class _QueriesScreenState extends State<QueriesScreen> {
                                   context,
                                   icon: Icons.message_outlined,
                                   label: 'Raise Query',
-                                  onTap: () {
-                                    Get.dialog(
-                                      RaiseQueryDialog(
-                                        onAddQuery: (title, message) {
-                                          queryController.addNewQuery(title, message, 'xyz2011@gmail.com');
-                                        },
-                                      ),
-                                    );
-                                  },
+                                  onTap: _showRaiseQueryDialog, // Use the new method
                                 ),
                                 _buildActionButton(
                                   context,
                                   icon: Icons.lightbulb_outline,
                                   label: 'View \n FAQs',
                                   onTap: () {
-                                    // NEW: Show the FAQ dialog
-                                    showDialog(
-                                      context: context,
-                                      builder: (BuildContext context) {
-                                        return FaqDialog(queryController: _queryInputController);
-                                      },
-                                    );
+                                    /* showDialog(
+                                    context: context,
+                                    builder: (BuildContext context) {
+                                      return const FaqDialog(); // Assuming FaqDialog doesn't need TextEditingController directly
+                                    },
+                                  );*/
                                   },
                                 ),
                                 _buildActionButton(
                                   context,
                                   icon: Icons.contact_support_outlined,
-                                  label: 'About \n Us', // Changed label for clarity, as requested
+                                  label: 'About \n Us',
                                   onTap: () {
-                                    // NEW: Show the About Us dialog
                                     showDialog(
                                       context: context,
                                       builder: (BuildContext context) {
@@ -220,7 +232,6 @@ class _QueriesScreenState extends State<QueriesScreen> {
                       ),
                     ),
                   ),
-                  // END Glassmorphic effect for Quick Actions
                 ],
               ),
             ),
@@ -228,24 +239,21 @@ class _QueriesScreenState extends State<QueriesScreen> {
 
           // Previous Queries Section (Now with contrasting Glassmorphic effect)
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16.0, 20.0, 16.0, 25.0), // Consistent horizontal, vertical space from above
+            padding: const EdgeInsets.fromLTRB(16.0, 20.0, 16.0, 25.0),
             sliver: SliverList(
               delegate: SliverChildListDelegate(
                 [
-                  // START Glassmorphic effect for Previous Queries Outer Container
-                  ClipRRect( // Clip content to rounded corners for blur effect
-                    borderRadius: BorderRadius.circular(20), // Match Container's border radius
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
                     child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10), // Apply blur
-                      child: Container( // Outer container for the entire elevated section
+                      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                      child: Container(
                         decoration: BoxDecoration(
-                          // Use a translucent color from your theme for the glass effect
-                          color: AppColors.primaryPurple.withOpacity(0.1), // Using a translucent purple
-                          borderRadius: BorderRadius.circular(20), // Rounded corners for the entire card
-                          // Subtle border using a slightly more opaque version of the same color
+                          color: AppColors.primaryPurple.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(20),
                           border: Border.all(color: AppColors.primaryPurple.withOpacity(0.3), width: 1.0),
                         ),
-                        padding: const EdgeInsets.all(20.0), // Internal padding for the card
+                        padding: const EdgeInsets.all(20.0),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -254,38 +262,54 @@ class _QueriesScreenState extends State<QueriesScreen> {
                               children: [
                                 Text(
                                   'Previous Queries',
-                                  style: GoogleFonts.poppins(
-                                    fontSize: 20, // Consistent section title size
+                                  // Use titleLarge and override color if necessary
+                                  style: textTheme.titleLarge?.copyWith(
+                                    fontSize: 20, // Override if AppTheme's titleLarge is not 20
                                     fontWeight: FontWeight.w600,
-                                    color: AppColors.textDark, // Still dark text for readability on light glass
+                                    color: AppColors.textDark,
                                   ),
                                 ),
+                                // Add a refresh button for queries
+                                Obx(
+                                      () => IconButton(
+                                    icon: const Icon(Icons.refresh, color: AppColors.textLight),
+                                    onPressed: queryController.isLoading ? null : queryController.fetchMyQueries,
+                                    tooltip: 'Refresh Queries',
+                                  ),
+                                )
                               ],
                             ),
-                            const SizedBox(height: 18), // Spacing below title
-                            // The inner Container with the actual scrollable list (dark background)
-                            // This part should NOT be blurred. Its background should remain solid.
+                            const SizedBox(height: 18),
+                            // Container for the query list
                             Container(
-                              height: 280, // Fixed height for scrollable window
+                              height: 280, // Fixed height for the query list container
                               decoration: BoxDecoration(
-                                color: AppColors.darkPurple, // Dark background for the queries list
-                                borderRadius: BorderRadius.circular(15), // Rounded corners for the inner list container
+                                color: AppColors.darkPurple,
+                                borderRadius: BorderRadius.circular(15),
                               ),
                               child: Obx(() {
-                                if (queryController.queries.isEmpty) {
+                                // Show loading indicator if queries are being fetched
+                                if (queryController.isLoading && queryController.myQueries.isEmpty) {
+                                  return Center(
+                                    child: CircularProgressIndicator(color: AppColors.accentNeon),
+                                  );
+                                }
+                                // Show message if no queries are found after loading
+                                if (queryController.myQueries.isEmpty) {
                                   return Padding(
                                     padding: const EdgeInsets.all(20.0),
                                     child: Center(
                                       child: Column(
                                         mainAxisAlignment: MainAxisAlignment.center,
                                         children: [
-                                          Icon(Icons.inbox_rounded, size: 70, color: Colors.white.withOpacity(0.3)),
+                                          Icon(Icons.inbox_rounded, size: 70, color: AppColors.white.withOpacity(0.3)),
                                           const SizedBox(height: 12),
                                           Text(
                                             'No queries raised yet.\nTap "Raise Query" to start one!',
-                                            style: GoogleFonts.poppins(
-                                              fontSize: 15,
-                                              color: Colors.white.withOpacity(0.7),
+                                            // Use bodyLarge with white color and custom height
+                                            style: textTheme.bodyLarge?.copyWith(
+                                              fontSize: 15, // Override if AppTheme's bodyLarge is not 15
+                                              color: AppColors.white.withOpacity(0.7),
                                               height: 1.4,
                                             ),
                                             textAlign: TextAlign.center,
@@ -295,35 +319,43 @@ class _QueriesScreenState extends State<QueriesScreen> {
                                     ),
                                   );
                                 }
+                                // Display queries if available
                                 return ListView.builder(
                                   padding: const EdgeInsets.symmetric(vertical: 8.0),
                                   physics: const AlwaysScrollableScrollPhysics(),
-                                  itemCount: queryController.queries.length,
+                                  itemCount: queryController.myQueries.length,
                                   itemBuilder: (context, index) {
-                                    final query = queryController.queries[index];
-                                    final bool hasUnreadAdminReply = query.replies.isNotEmpty &&
-                                        query.replies.last.isAdmin &&
-                                        !query.isRead;
+                                    final query = queryController.myQueries[index];
+                                    // Make sure query.replies is not null and check if it's empty
+                                    // Also ensure `isAdmin` and `isRead` properties are handled correctly in QueryModel
+                                    final bool hasUnreadAdminReply = query.replies != null && query.replies!.isNotEmpty &&
+                                        query.replies!.last.isAdmin &&
+                                        !(query.isRead ?? false); // Handle nullable isRead
 
                                     return InkWell(
-                                      onTap: () => queryController.selectQuery(query),
+                                      // Corrected: Add navigation after selecting the query
+                                      onTap: () {
+                                        queryController.selectQuery(query);
+                                        // Navigate to QueryDetailScreen
+                                        Get.to(() =>  QueryDetailScreen());
+                                      },
                                       child: Container(
                                         margin: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 4.0),
                                         padding: const EdgeInsets.symmetric(vertical: 12.0),
                                         decoration: BoxDecoration(
-                                          border: index == queryController.queries.length - 1
+                                          border: index == queryController.myQueries.length - 1
                                               ? null
-                                              : Border(bottom: BorderSide(color: Colors.white.withOpacity(0.1), width: 1)),
+                                              : Border(bottom: BorderSide(color: AppColors.white.withOpacity(0.1), width: 1)),
                                         ),
                                         child: Row(
                                           crossAxisAlignment: CrossAxisAlignment.center,
                                           children: [
                                             CircleAvatar(
                                               radius: 18,
-                                              backgroundColor: hasUnreadAdminReply ? AppColors.accentNeon.withOpacity(0.3) : Colors.white.withOpacity(0.1),
+                                              backgroundColor: hasUnreadAdminReply ? AppColors.accentNeon.withOpacity(0.3) : AppColors.white.withOpacity(0.1),
                                               child: Icon(
                                                 Icons.chat_bubble_outline,
-                                                color: hasUnreadAdminReply ? AppColors.accentNeon : Colors.white.withOpacity(0.8),
+                                                color: hasUnreadAdminReply ? AppColors.accentNeon : AppColors.white.withOpacity(0.8),
                                                 size: 18,
                                               ),
                                             ),
@@ -334,10 +366,11 @@ class _QueriesScreenState extends State<QueriesScreen> {
                                                 children: [
                                                   Text(
                                                     query.title,
-                                                    style: GoogleFonts.poppins(
-                                                      fontSize: 14,
+                                                    // Use titleSmall and override properties
+                                                    style: textTheme.titleSmall?.copyWith(
+                                                      fontSize: 14, // Override if AppTheme's titleSmall is different
                                                       fontWeight: hasUnreadAdminReply ? FontWeight.w600 : FontWeight.w500,
-                                                      color: Colors.white,
+                                                      color: AppColors.white,
                                                     ),
                                                     maxLines: 1,
                                                     overflow: TextOverflow.ellipsis,
@@ -349,9 +382,10 @@ class _QueriesScreenState extends State<QueriesScreen> {
                                                         : query.message,
                                                     maxLines: 1,
                                                     overflow: TextOverflow.ellipsis,
-                                                    style: GoogleFonts.poppins(
-                                                      fontSize: 11,
-                                                      color: Colors.white.withOpacity(0.7),
+                                                    // Use bodySmall and override color
+                                                    style: textTheme.bodySmall?.copyWith(
+                                                      fontSize: 11, // Override if AppTheme's bodySmall is different
+                                                      color: AppColors.white.withOpacity(0.7),
                                                     ),
                                                   ),
                                                 ],
@@ -364,9 +398,10 @@ class _QueriesScreenState extends State<QueriesScreen> {
                                               children: [
                                                 Text(
                                                   DateFormat('MMM d').format(query.createdAt),
-                                                  style: GoogleFonts.poppins(
-                                                    fontSize: 9,
-                                                    color: Colors.white.withOpacity(0.5),
+                                                  // Use labelSmall and override color/opacity
+                                                  style: textTheme.labelSmall?.copyWith(
+                                                    fontSize: 9, // Override if AppTheme's labelSmall is different
+                                                    color: AppColors.white.withOpacity(0.5),
                                                   ),
                                                 ),
                                                 if (hasUnreadAdminReply)
@@ -380,9 +415,10 @@ class _QueriesScreenState extends State<QueriesScreen> {
                                                       ),
                                                       child: Text(
                                                         'NEW',
-                                                        style: GoogleFonts.poppins(
-                                                          fontSize: 8,
-                                                          color: Colors.white,
+                                                        // Use labelSmall and override properties
+                                                        style: textTheme.labelSmall?.copyWith(
+                                                          fontSize: 8, // Override if AppTheme's labelSmall is different
+                                                          color: AppColors.white,
                                                           fontWeight: FontWeight.bold,
                                                         ),
                                                       ),
@@ -403,12 +439,11 @@ class _QueriesScreenState extends State<QueriesScreen> {
                       ),
                     ),
                   ),
-                  // END Glassmorphic effect for Previous Queries Outer Container
                 ],
               ),
             ),
           ),
-          SliverToBoxAdapter(child: SizedBox(height: 30)), // Bottom padding for CustomScrollView
+          const SliverToBoxAdapter(child: SizedBox(height: 30)),
         ],
       ),
     );
@@ -416,21 +451,24 @@ class _QueriesScreenState extends State<QueriesScreen> {
 
   // Helper method to build action buttons
   Widget _buildActionButton(BuildContext context, {required IconData icon, required String label, required VoidCallback onTap}) {
+    // Get the TextTheme here as well
+    final TextTheme textTheme = Theme.of(context).textTheme;
+
     return Expanded(
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(18), // Match button border radius for consistent tap effect
+        borderRadius: BorderRadius.circular(18),
         child: Container(
           height: 120,
           width: 140,
           margin: const EdgeInsets.symmetric(horizontal: 8),
-          padding: const EdgeInsets.symmetric(vertical: 20), // Uniform vertical padding for all buttons
+          padding: const EdgeInsets.symmetric(vertical: 20),
           decoration: BoxDecoration(
-            color: AppColors.darkPurple, // Dark purple background for buttons
-            borderRadius: BorderRadius.circular(18), // Slightly more rounded buttons
+            color: AppColors.darkPurple,
+            borderRadius: BorderRadius.circular(18),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.15), // Stronger, more defined shadow for buttons
+                color: AppColors.textDark.withOpacity(0.15), // Use AppColors for consistency
                 blurRadius: 12,
                 offset: const Offset(0, 6),
               ),
@@ -438,14 +476,15 @@ class _QueriesScreenState extends State<QueriesScreen> {
           ),
           child: Column(
             children: [
-              Icon(icon, color: Colors.white, size: 30),
-              const SizedBox(height: 12), // More space between icon and text
+              Icon(icon, color: AppColors.white, size: 30), // Use AppColors.white
+              const SizedBox(height: 12),
               Text(
                 label,
-                style: GoogleFonts.poppins(
-                  fontSize: 13,
+                // Use labelMedium and override color if necessary
+                style: textTheme.labelMedium?.copyWith(
+                  fontSize: 13, // Override if AppTheme's labelMedium is different
                   fontWeight: FontWeight.w500,
-                  color: Colors.white,
+                  color: AppColors.white,
                 ),
                 textAlign: TextAlign.center,
               ),

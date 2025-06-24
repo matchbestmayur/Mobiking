@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart'; // Ensure you have Get imported correctly
-import 'package:google_fonts/google_fonts.dart';
+import 'package:get/get.dart';
 import 'package:mobiking/app/themes/app_theme.dart'; // Your AppColors and AppTheme
 
 import '../../../controllers/wishlist_controller.dart';
-import 'Wish_list_card.dart'; // Assuming this widget will be styled similarly
+import 'Wish_list_card.dart'; // Ensure this path is correct and it's the updated version
 
 class WishlistScreen extends StatelessWidget {
   WishlistScreen({super.key});
@@ -13,24 +12,25 @@ class WishlistScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final TextTheme textTheme = Theme.of(context).textTheme;
+
     return Scaffold(
       backgroundColor: AppColors.neutralBackground, // Consistent background
       appBar: AppBar(
-        elevation: 1, // Subtle elevation for professionalism
-        backgroundColor: AppColors.primaryPurple, // Consistent AppBar background
-        leading: IconButton( // Use IconButton for better tap area and semantics
-          icon: const Icon(Icons.arrow_back_ios_rounded, color: Colors.white), // Consistent icon and color
+        elevation: 0.5, // Subtle elevation
+        backgroundColor: AppColors.white, // White AppBar background (Blinkit style)
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppColors.textDark), // Dark back arrow
           onPressed: () => Get.back(),
         ),
         title: Text(
           'My Wishlist',
-          style: GoogleFonts.poppins(
-            fontWeight: FontWeight.w700, // Bolder title
-            fontSize: 20, // Larger font size for title
-            color: Colors.white, // Consistent title color
+          style: textTheme.titleLarge?.copyWith( // Consistent title style
+            fontWeight: FontWeight.w700,
+            color: AppColors.textDark, // Dark text
           ),
         ),
-        centerTitle: true, // Center title as per your AppTheme
+        centerTitle: false, // Left-aligned title (more common in Blinkit)
       ),
       body: Obx(() {
         if (controller.isLoading.value) {
@@ -38,11 +38,11 @@ class WishlistScreen extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                CircularProgressIndicator(color: AppColors.primaryPurple), // Consistent loading indicator color
+                CircularProgressIndicator(color: AppColors.primaryGreen), // Blinkit green loader
                 const SizedBox(height: 16),
                 Text(
                   'Loading your wishlist...',
-                  style: GoogleFonts.poppins(fontSize: 16, color: AppColors.textLight),
+                  style: textTheme.bodyLarge?.copyWith(color: AppColors.textMedium), // Softer text color
                 ),
               ],
             ),
@@ -52,40 +52,46 @@ class WishlistScreen extends StatelessWidget {
         if (controller.wishlist.isEmpty) {
           return Center(
             child: Padding(
-              padding: const EdgeInsets.all(32.0), // Increased padding
+              padding: const EdgeInsets.all(32.0),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.favorite_border_rounded, size: 80, color: AppColors.textLight), // Themed icon
+                  Icon(
+                    Icons.favorite_border_rounded,
+                    size: 80,
+                    color: AppColors.textLight.withOpacity(0.6), // Lighter, more subtle icon
+                  ),
                   const SizedBox(height: 24),
                   Text(
                     'Your wishlist is empty!',
-                    style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.textDark),
+                    style: textTheme.headlineSmall?.copyWith( // Prominent message
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textDark,
+                    ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 12),
                   Text(
                     'Add your favorite items here to easily find them later.',
                     textAlign: TextAlign.center,
-                    style: GoogleFonts.poppins(fontSize: 15, color: AppColors.textLight),
+                    style: textTheme.bodyLarge?.copyWith(color: AppColors.textMedium), // Medium grey for secondary text
                   ),
                   const SizedBox(height: 32),
                   ElevatedButton(
                     onPressed: () {
-                      // Assuming you have a route to navigate to a product listing screen
-                      // Or simply go back to previous screen (e.g., home)
-                      Get.back(); // Or Get.toNamed('/products') if you have a product list route
+                      // Navigate to a product listing screen or home
+                      Get.back(); // Or Get.toNamed('/home') or '/products'
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryPurple, // Consistent button style
-                      foregroundColor: Colors.white,
+                      backgroundColor: AppColors.primaryGreen, // Blinkit green button
+                      foregroundColor: AppColors.white,
                       padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      elevation: 4,
+                      elevation: 4, // Subtle elevation
                     ),
                     child: Text(
                       'Start Exploring Products',
-                      style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600),
+                      style: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600, color: AppColors.white),
                     ),
                   ),
                 ],
@@ -94,16 +100,45 @@ class WishlistScreen extends StatelessWidget {
           );
         }
 
+        // Use ListView.separated for consistent spacing with dividers if desired,
+        // or just rely on item padding as implemented in WishlistCard.
         return ListView.builder(
-          padding: const EdgeInsets.all(16), // Increased padding for better spacing
+          padding: const EdgeInsets.all(16), // Padding around the entire list
           itemCount: controller.wishlist.length,
           itemBuilder: (context, index) {
             final product = controller.wishlist[index];
             return Padding(
-              padding: const EdgeInsets.only(bottom: 16), // Increased bottom padding between cards
+              padding: const EdgeInsets.only(bottom: 12), // Consistent bottom padding for each card
               child: WishlistCard(
                 product: product,
-                onRemove: () => controller.removeFromWishlist(product.id), // Ensure product.id is correct type
+                onRemove: () {
+                  // Show confirmation dialog before removing, good UX
+                  Get.defaultDialog(
+                    title: "Remove from Wishlist?",
+                    middleText: "Are you sure you want to remove '${product.name}' from your wishlist?",
+                    textConfirm: "Remove",
+                    textCancel: "Cancel",
+                    confirmTextColor: AppColors.white,
+                    buttonColor: AppColors.danger,
+                    cancelTextColor: AppColors.textDark,
+                    onConfirm: () {
+                      controller.removeFromWishlist(product.id);
+                      Get.back(); // Close dialog
+                    },
+                  );
+                },
+                onAddToCart: () {
+                  // TODO: Implement actual add to cart logic
+                  Get.snackbar(
+                    'Added to Cart!',
+                    '${product.name} has been added to your cart.',
+                    snackPosition: SnackPosition.BOTTOM,
+                    backgroundColor: AppColors.primaryGreen,
+                    colorText: AppColors.white,
+                    margin: const EdgeInsets.all(10),
+                    borderRadius: 10,
+                  );
+                },
               ),
             );
           },

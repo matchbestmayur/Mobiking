@@ -27,6 +27,8 @@ class AddressService extends GetxService {
     return token;
   }
 
+  // In AddressService.dart
+
   Future<List<AddressModel>> fetchUserAddresses() async {
     final token = _getAccessToken();
     if (token == null) {
@@ -43,15 +45,19 @@ class AddressService extends GetxService {
       print('AddressService: GET Status: ${response.statusCode}');
       final body = jsonDecode(response.body);
 
+      print('AddressService: FETCH ADDRESSES RESPONSE BODY: $body'); // Keep this for debugging
+
       if (response.statusCode == 200 && body['success'] == true) {
-        // The view endpoint returns user data which contains an 'address' list
-        if (body['data'] is Map && body['data']['address'] is List) {
-          final List addressListJson = body['data']['address'];
-          print('AddressService: Fetched ${addressListJson.length} addresses.');
-          return addressListJson.map((e) => AddressModel.fromJson(e)).toList();
+        // *** THE CRITICAL CHANGE IS HERE ***
+        // 'data' is now directly a List of address objects
+        if (body['data'] is List) { // Check if 'data' is a List
+          final List dataList = body['data']; // Cast 'data' directly to a List
+          print('AddressService: Fetched ${dataList.length} addresses.');
+          // Map each item in the list directly to AddressModel.fromJson
+          return dataList.map((e) => AddressModel.fromJson(e)).toList();
         } else {
-          print('AddressService: Unexpected format for fetch response data: $body');
-          _showError('Error', 'Failed to parse address data.');
+          print('AddressService: "data" field is not a List as expected: $body');
+          _showError('Error', 'Failed to parse address data: unexpected format.');
           return [];
         }
       }

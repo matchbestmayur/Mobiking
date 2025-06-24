@@ -21,7 +21,8 @@ class OrderServiceException implements Exception {
 }
 
 class OrderService extends GetxService {
-  static const String _baseUrl = 'https://mobiking-e-commerce-backend.vercel.app/api/v1/orders';
+  static const String _baseUrl = 'https://mobiking-e-commerce-backend.vercel.app/api/v1/orders'; // Your actual base URL
+  static const String _userRequestBaseUrl = 'https://mobiking-e-commerce-backend.vercel.app/api/v1/users/request'; // Base URL for user requests
   final GetStorage _box = GetStorage();
 
   String? get _accessToken => _box.read('accessToken');
@@ -142,7 +143,8 @@ class OrderService extends GetxService {
 
 
   Future<OrderModel> verifyRazorpayPayment(RazorpayVerifyRequest verifyRequest) async {
-    final url = Uri.parse('https://mobiking-e-commerce-backend.vercel.app/api/v1/orders/online/verify'); // Your EXACT verification URL
+    // Corrected to use _baseUrl for consistency
+    final url = Uri.parse('$_baseUrl/online/verify');
     Map<String, String> headers;
     try {
       headers = _getHeaders();
@@ -189,8 +191,7 @@ class OrderService extends GetxService {
     }
   }
 
-
-
+  /// Fetches a list of orders specific to the authenticated user.
   Future<List<OrderModel>> getUserOrders() async {
     final url = Uri.parse('$_baseUrl/user'); // Endpoint for user-specific orders
     Map<String, String> headers;
@@ -234,6 +235,155 @@ class OrderService extends GetxService {
       throw OrderServiceException('Server response format error: $e', statusCode: 0);
     } catch (e) {
       throw OrderServiceException('An unexpected error occurred: $e');
+    }
+  }
+
+  // --- NEW METHODS FOR ORDER REQUESTS ---
+
+  /// Sends a request to the backend to cancel an order.
+  Future<Map<String, dynamic>> requestCancel(String orderId, String reason) async {
+    final url = Uri.parse('$_userRequestBaseUrl/cancel');
+    Map<String, String> headers;
+    try {
+      headers = _getHeaders();
+    } on OrderServiceException {
+      rethrow;
+    } catch (e) {
+      throw OrderServiceException('Failed to prepare headers for cancel request: $e');
+    }
+
+    try {
+      final response = await http.post(
+        url,
+        headers: headers,
+        body: jsonEncode({
+          "reason": reason,
+          "orderId": orderId,
+        }),
+      );
+
+      final responseBody = jsonDecode(response.body);
+      print("OrderService - requestCancel Status: ${response.statusCode}, Body: ${response.body}");
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        if (responseBody['success'] == true) {
+          return responseBody as Map<String, dynamic>; // Return the full response body
+        } else {
+          throw OrderServiceException(
+            responseBody['message'] ?? 'Failed to send cancel request.',
+            statusCode: response.statusCode,
+          );
+        }
+      } else {
+        throw OrderServiceException(
+          responseBody['message'] ?? 'Cancel request failed on backend.',
+          statusCode: response.statusCode,
+        );
+      }
+    } on http.ClientException catch (e) {
+      throw OrderServiceException('Network error during cancel request: ${e.message}', statusCode: 0);
+    } on FormatException catch (e) {
+      throw OrderServiceException('Server response format error during cancel request: $e', statusCode: 0);
+    } catch (e) {
+      throw OrderServiceException('An unexpected error occurred during cancel request: $e');
+    }
+  }
+
+  /// Sends a request to the backend for order warranty.
+  Future<Map<String, dynamic>> requestWarranty(String orderId, String reason) async {
+    final url = Uri.parse('$_userRequestBaseUrl/warranty');
+    Map<String, String> headers;
+    try {
+      headers = _getHeaders();
+    } on OrderServiceException {
+      rethrow;
+    } catch (e) {
+      throw OrderServiceException('Failed to prepare headers for warranty request: $e');
+    }
+
+    try {
+      final response = await http.post(
+        url,
+        headers: headers,
+        body: jsonEncode({
+          "reason": reason,
+          "orderId": orderId,
+        }),
+      );
+
+      final responseBody = jsonDecode(response.body);
+      print("OrderService - requestWarranty Status: ${response.statusCode}, Body: ${response.body}");
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        if (responseBody['success'] == true) {
+          return responseBody as Map<String, dynamic>; // Return the full response body
+        } else {
+          throw OrderServiceException(
+            responseBody['message'] ?? 'Failed to send warranty request.',
+            statusCode: response.statusCode,
+          );
+        }
+      } else {
+        throw OrderServiceException(
+          responseBody['message'] ?? 'Warranty request failed on backend.',
+          statusCode: response.statusCode,
+        );
+      }
+    } on http.ClientException catch (e) {
+      throw OrderServiceException('Network error during warranty request: ${e.message}', statusCode: 0);
+    } on FormatException catch (e) {
+      throw OrderServiceException('Server response format error during warranty request: $e', statusCode: 0);
+    } catch (e) {
+      throw OrderServiceException('An unexpected error occurred during warranty request: $e');
+    }
+  }
+
+  /// Sends a request to the backend for order return.
+  Future<Map<String, dynamic>> requestReturn(String orderId, String reason) async {
+    final url = Uri.parse('$_userRequestBaseUrl/return');
+    Map<String, String> headers;
+    try {
+      headers = _getHeaders();
+    } on OrderServiceException {
+      rethrow;
+    } catch (e) {
+      throw OrderServiceException('Failed to prepare headers for return request: $e');
+    }
+
+    try {
+      final response = await http.post(
+        url,
+        headers: headers,
+        body: jsonEncode({
+          "reason": reason,
+          "orderId": orderId,
+        }),
+      );
+
+      final responseBody = jsonDecode(response.body);
+      print("OrderService - requestReturn Status: ${response.statusCode}, Body: ${response.body}");
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        if (responseBody['success'] == true) {
+          return responseBody as Map<String, dynamic>; // Return the full response body
+        } else {
+          throw OrderServiceException(
+            responseBody['message'] ?? 'Failed to send return request.',
+            statusCode: response.statusCode,
+          );
+        }
+      } else {
+        throw OrderServiceException(
+          responseBody['message'] ?? 'Return request failed on backend.',
+          statusCode: response.statusCode,
+        );
+      }
+    } on http.ClientException catch (e) {
+      throw OrderServiceException('Network error during return request: ${e.message}', statusCode: 0);
+    } on FormatException catch (e) {
+      throw OrderServiceException('Server response format error during return request: $e', statusCode: 0);
+    } catch (e) {
+      throw OrderServiceException('An unexpected error occurred during return request: $e');
     }
   }
 }

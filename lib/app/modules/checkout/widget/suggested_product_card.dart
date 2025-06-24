@@ -117,7 +117,7 @@ class SuggestedProductCard extends StatelessWidget {
                 children: [
                   Text(
                     product.name ?? 'Unnamed Product',
-                    maxLines: 2,
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.poppins(
                       fontSize: 13, // Slightly smaller, more compact

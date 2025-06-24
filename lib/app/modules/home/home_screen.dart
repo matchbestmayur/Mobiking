@@ -2,13 +2,14 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:google_fonts/google_fonts.dart';
+// Remove this if you're fully transitioning to AppTheme for text styles
+import 'package:google_fonts/google_fonts.dart'; // Keep if used elsewhere or for specific cases
 import 'package:mobiking/app/modules/home/widgets/FloatingCartButton.dart';
 
 import '../../controllers/cart_controller.dart' show CartController;
 import '../../controllers/category_controller.dart';
 import '../../controllers/sub_category_controller.dart';
-import '../../themes/app_theme.dart';
+import '../../themes/app_theme.dart'; // Make sure this import is correct
 import '../../widgets/CustomBottomBar.dart';
 import '../../widgets/CategoryTab.dart';
 import '../../widgets/CustomAppBar.dart';
@@ -62,32 +63,33 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final tabController = Get.find<TabControllerGetX>();
+    // Get the TextTheme from the current context
+    final TextTheme textTheme = Theme.of(context).textTheme;
+
+    // Assuming TabControllerGetX is defined somewhere (e.g., in your GetX bindings)
+    // If not, you might need to manage tabs differently or provide a mock.
+    // final tabController = Get.find<TabControllerGetX>();
 
     return Scaffold(
-      // extendBodyBehindAppBar is usually set to false when AppBar is a sliver
-      // if you don't want content to draw behind it.
-      extendBodyBehindAppBar: false, // Changed to false as AppBar is now a sliver
-      backgroundColor: AppColors.neutralBackground,
-      appBar: null, // Removed direct appBar property
+      extendBodyBehindAppBar: false,
+      backgroundColor: AppColors.neutralBackground, // Use AppColors for background
+      appBar: null,
       body: Stack(
         children: [
           CustomScrollView(
             controller: _scrollController,
             slivers: [
-              // --- CustomAppBar as a SliverToBoxAdapter ---
               SliverToBoxAdapter(
-                child: CustomAppBar(), // Your custom app bar as a sliver
+                child: CustomAppBar(),
               ),
-
-              // Search bar with added padding for a more professional look
               SearchTabSliverAppBar(
                 onSearchChanged: (value) {
                   print('Search query: $value');
                 },
               ),
+              // Assuming CustomTabBarViewSection also handles its own text styling internally
               SliverToBoxAdapter(
-                child: CustomTabBarViewSection(), // Assuming this widget exists
+                child: CustomTabBarViewSection(),
               ),
               SliverToBoxAdapter(
                 child: Padding(
@@ -98,10 +100,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       Text(
                         "Mobiking",
                         textAlign: TextAlign.left,
-                        style: GoogleFonts.poppins(
-                          fontSize: 48,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.grey,
+                        // Apply custom displayLarge style from AppTheme
+                        style: textTheme.displayLarge?.copyWith(
+                          color: AppColors.textLight, // Use AppColors for consistent grey
                           letterSpacing: -2.0,
                           height: 1.0,
                         ),
@@ -110,10 +111,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       Text(
                         "Your Wholesale Partner",
                         textAlign: TextAlign.left,
-                        style: GoogleFonts.poppins(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.grey.shade700,
+                        // Apply custom headlineMedium style from AppTheme
+                        style: textTheme.headlineMedium?.copyWith(
+                          color: AppColors.textLight, // Use AppColors for consistent grey
                           height: 1.2,
                         ),
                       ),
@@ -121,14 +121,23 @@ class _HomeScreenState extends State<HomeScreen> {
                       Text(
                         "Buy in bulk, save big. Get the best deals on mobile phones and accessories, delivered directly to your doorstep.",
                         textAlign: TextAlign.left,
-                        style: GoogleFonts.poppins(
-                          fontSize: 15,
-                          color: Colors.grey.shade600,
+                        // Apply custom bodyLarge style from AppTheme
+                        style: textTheme.bodyLarge?.copyWith(
+                          color: AppColors.textLight, // Use AppColors for consistent grey
                           height: 1.4,
                         ),
                       ),
                       const SizedBox(height: 60),
-                      Container(height: 800, color: Colors.blueGrey.withOpacity(0.1), child: Center(child: Text('Scrollable Content Area'))),
+                      Container(
+                        height: 800,
+                        color: AppColors.primaryPurple.withOpacity(0.1), // Use AppColors
+                        child: Center(
+                          child: Text(
+                            'Scrollable Content Area',
+                            style: textTheme.bodyMedium?.copyWith(color: AppColors.primaryPurple), // Use bodyMedium
+                          ),
+                        ),
+                      ),
                       const SizedBox(height: 80),
                     ],
                   ),
@@ -150,7 +159,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: _showScrollToTopButton.value
                     ? FloatingActionButton(
                   mini: true,
-                  backgroundColor: AppColors.darkPurple,
+                  backgroundColor: AppColors.darkPurple, // Use AppColors
                   onPressed: _scrollToTop,
                   child: const Icon(Icons.arrow_upward, color: Colors.white),
                 )

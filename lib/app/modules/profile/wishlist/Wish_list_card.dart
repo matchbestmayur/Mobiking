@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+// Remove GoogleFonts import if not globally applied via AppTheme
+// import 'package:google_fonts/google_fonts.dart';
 import 'package:mobiking/app/data/product_model.dart'; // Ensure this path is correct
 import 'package:mobiking/app/themes/app_theme.dart'; // Import your AppColors
 
@@ -7,76 +8,79 @@ class WishlistCard extends StatelessWidget {
   final ProductModel product;
   final VoidCallback onRemove;
   final VoidCallback? onTap; // Optional: for making the card itself tappable
+  final VoidCallback? onAddToCart; // Added: for Add to Cart functionality
 
   const WishlistCard({
     super.key,
     required this.product,
     required this.onRemove,
     this.onTap,
+    this.onAddToCart, // Initialize the new callback
   });
 
   @override
   Widget build(BuildContext context) {
+    final TextTheme textTheme = Theme.of(context).textTheme;
+
     // Determine the actual price to display.
-    // Assuming product.sellingPrice.first is the regular price
-    // and product.sellingPrice.length > 1 implies a discounted price at index 1.
-    final regularPrice = product.sellingPrice.isNotEmpty ? product.sellingPrice.first.price : 0.0;
-    final discountedPrice = product.sellingPrice.length > 1 ? product.sellingPrice[1].price : null;
+    final num regularPrice = product.sellingPrice.isNotEmpty ? product.sellingPrice.first.price : 0.0;
+    // Assuming discounted price is at index 1 if available
+    final int? discountedPrice = product.sellingPrice.length > 1 ? product.sellingPrice[1].price : null;
     final bool hasDiscount = discountedPrice != null && discountedPrice < regularPrice;
 
-    final displayPrice = hasDiscount ? discountedPrice! : regularPrice;
+    final num displayPrice = hasDiscount ? discountedPrice! : regularPrice;
 
-    return Card(
-      color: AppColors.neutralBackground, // Use a white/neutral background for the card
-      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+    // Use a placeholder image if no images are available
+    final String imageUrl = product.images.isNotEmpty
+        ? product.images[0]
+        : "https://via.placeholder.com/100x100/F0F0F0/A0A0A0?text=No+Image";
+
+    return Container(
+      // Replacing Card with Container for more precise styling control
+      decoration: BoxDecoration(
+        color: AppColors.white, // Pure white background for the card
+        borderRadius: BorderRadius.circular(12), // Rounded corners for the entire card
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.textDark.withOpacity(0.04), // Very subtle, diffused shadow
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
-      elevation: 6, // Slightly higher elevation for a richer feel
-      shadowColor: Colors.black.withOpacity(0.1), // More subtle and diffused shadow
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12), // Match container's border radius
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(12), // Reduced padding for a more compact card
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start, // Align content to the top
             children: [
               // --- Product Image ---
               Container(
-                width: 90, // Slightly larger image for impact
+                width: 90, // Consistent image size
                 height: 90,
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.lightPurple.withOpacity(0.5), width: 1), // Themed subtle border
-                  color: AppColors.neutralBackground, // Background for image container
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.textLight.withOpacity(0.1), // Themed subtle shadow for the image
-                      blurRadius: 6,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
+                  borderRadius: BorderRadius.circular(8), // Slightly less rounded than card
+                  color: AppColors.neutralBackground, // Light background for image area
                 ),
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(8),
                   child: Image.network(
-                    product.images.isNotEmpty
-                        ? product.images[0]
-                        : "https://via.placeholder.com/90x90?text=No+Image", // Professional placeholder URL
+                    imageUrl,
                     width: 90,
                     height: 90,
                     fit: BoxFit.cover,
                     errorBuilder: (context, error, stackTrace) => Container(
                       color: AppColors.neutralBackground,
-                      child: Icon(Icons.broken_image_rounded, color: AppColors.textLight, size: 40), // Themed broken image icon
+                      child: Icon(Icons.broken_image_rounded, color: AppColors.textLight, size: 36), // Themed broken image icon
                     ),
                   ),
                 ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 12),
 
-              // --- Product Details: Name, Price, Discount ---
+              // --- Product Details: Name, Price, Discount, Actions ---
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -85,51 +89,92 @@ class WishlistCard extends StatelessWidget {
                       product.name,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.poppins(
-                        fontSize: 17, // Adjusted font size for name
+                      style: textTheme.titleMedium?.copyWith( // Using titleMedium for product name
                         fontWeight: FontWeight.w600,
-                        color: AppColors.textDark, // Consistent dark text color
+                        color: AppColors.textDark,
+                        height: 1.3, // Adjust line height for readability
                       ),
                     ),
                     const SizedBox(height: 6),
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.baseline, // Align text baselines
+                      textBaseline: TextBaseline.alphabetic,
                       children: [
-                        // Display original price if there's a discount
-                        if (hasDiscount) ...[
-                          Text(
-                            '₹${regularPrice.toStringAsFixed(2)}',
-                            style: GoogleFonts.poppins(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500, // Regular weight for strike-through
-                              color: AppColors.textLight, // Lighter grey for strike-through price
-                              decoration: TextDecoration.lineThrough,
-                              decorationColor: AppColors.textLight,
-                              decorationThickness: 1.5,
-                            ),
-                          ),
-                          const SizedBox(width: 8), // Space between original and discounted
-                        ],
                         // Display the actual selling price (discounted or regular)
                         Text(
                           '₹${displayPrice.toStringAsFixed(2)}',
-                          style: GoogleFonts.poppins(
-                            fontSize: hasDiscount ? 18 : 16, // Larger if discounted, standard if not
+                          style: textTheme.titleLarge?.copyWith( // Larger and bolder for main price
                             fontWeight: FontWeight.w700,
-                            color: hasDiscount ? AppColors.danger : AppColors.textDark, // Red for discounted, dark for regular
+                            color: AppColors.primaryGreen, // Discounted/Current price in Blinkit green
                           ),
                         ),
+                        const SizedBox(width: 8),
+                        // Display original price if there's a discount
+                        if (hasDiscount)
+                          Text(
+                            '₹${regularPrice.toStringAsFixed(2)}',
+                            style: textTheme.bodyLarge?.copyWith( // bodyLarge for strikethrough price
+                              fontWeight: FontWeight.w500,
+                              color: AppColors.textMedium, // Medium grey for strikethrough
+                              decoration: TextDecoration.lineThrough,
+                              decorationColor: AppColors.textMedium,
+                              decorationThickness: 1.5,
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 12), // Space before action buttons
+
+                    // --- Actions: Remove and Add to Cart ---
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        // Remove Button (leading edge)
+                        TextButton.icon(
+                          onPressed: onRemove,
+                          icon: Icon(Icons.close_rounded, color: AppColors.textMedium, size: 20), // Clear 'X' icon for remove
+                          label: Text(
+                            'Remove',
+                            style: textTheme.labelMedium?.copyWith(
+                              color: AppColors.textMedium,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          style: TextButton.styleFrom(
+                            padding: EdgeInsets.zero,
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            foregroundColor: AppColors.textMedium, // Ripple color
+                          ),
+                        ),
+                        // Add to Cart Button (trailing edge)
+                        if (onAddToCart != null)
+                          SizedBox(
+                            height: 36, // Fixed height for button
+                            child: ElevatedButton(
+                              onPressed: onAddToCart,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primaryGreen,
+                                foregroundColor: AppColors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8), // Slightly rounded corners
+                                ),
+                                padding: const EdgeInsets.symmetric(horizontal: 16), // Horizontal padding
+                                elevation: 2, // Subtle elevation
+                              ),
+                              child: Text(
+                                'Add', // Simple "Add" text
+                                style: textTheme.labelLarge?.copyWith( // labelLarge for button text
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.white,
+                                ),
+                              ),
+                            ),
+                          ),
                       ],
                     ),
                   ],
                 ),
-              ),
-
-              // --- Remove Button ---
-              IconButton(
-                icon: const Icon(Icons.favorite, color: AppColors.danger, size: 28), // Themed delete icon
-                onPressed: onRemove,
-                tooltip: 'Remove from Wishlist',
-                splashRadius: 24, // Control splash effect radius
               ),
             ],
           ),

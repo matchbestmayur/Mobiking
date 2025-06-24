@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:google_fonts/google_fonts.dart'; // Keep if you still need specific GoogleFonts calls outside the theme
 import 'package:mobiking/app/controllers/sub_category_controller.dart';
 import 'package:mobiking/app/themes/app_theme.dart';
 
+import '../controllers/tab_controller_getx.dart';
 import 'CategoryTab.dart'; // Assumed location of TabControllerGetX
 
 
@@ -15,6 +16,9 @@ class CustomAppBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Get the TextTheme from the current context's theme
+    final TextTheme textTheme = Theme.of(context).textTheme;
+
     return Obx(() {
       String? backgroundImage;
       final int selectedIndex = tabController.selectedIndex.value;
@@ -22,18 +26,20 @@ class CustomAppBar extends StatelessWidget {
       // Safely attempt to get the background image from the selected sub-category
       if (selectedIndex >= 0 && selectedIndex < subCategoryController.subCategories.length) {
         final currentSubCategory = subCategoryController.subCategories[selectedIndex];
-        if (currentSubCategory.products.isNotEmpty && currentSubCategory.products[0].images.isNotEmpty) {
+        // Ensure upperBanner is not null or empty before trying to use it
+        if (currentSubCategory.upperBanner != null && currentSubCategory.upperBanner!.isNotEmpty) {
           backgroundImage = currentSubCategory.upperBanner;
         }
       }
 
       return Container(
-        height: 70, // Give it a fixed height or use media query for responsiveness
+        padding: EdgeInsets.only(top: 15),
+        height: 80, // Give it a fixed height or use media query for responsiveness
         decoration: BoxDecoration(
           color: AppColors.darkPurple, // Fallback color if no image or during loading
           image: backgroundImage != null
               ? DecorationImage(
-            image: NetworkImage(backgroundImage),
+            image: NetworkImage(backgroundImage!), // Use ! as we've checked for null above
             fit: BoxFit.cover,
             // Apply a color filter to darken the image for better text readability
             colorFilter: ColorFilter.mode(
@@ -61,10 +67,9 @@ class CustomAppBar extends StatelessWidget {
                       children: [
                         Text(
                           "Mobiking Wholesale",
-                          style: GoogleFonts.poppins(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16,
-                            color: Colors.white, // Keep text white for visibility over image
+                          // Use a text style from your theme for main app bar title
+                          style: textTheme.titleMedium?.copyWith(
+                            color: Colors.white, // Override color to ensure it's white over the image
                           ),
                         ),
                         const SizedBox(height: 2),
@@ -73,9 +78,9 @@ class CustomAppBar extends StatelessWidget {
                           selectedIndex >= 0 && selectedIndex < subCategoryController.subCategories.length
                               ? subCategoryController.subCategories[selectedIndex].name
                               : 'Select Category', // Default text if no category selected
-                          style: GoogleFonts.poppins(
-                            fontSize: 12,
-                            color: Colors.white70,
+                          // Use a smaller text style from your theme
+                          style: textTheme.bodySmall?.copyWith(
+                            color: Colors.white70, // Override color for a subtle look
                           ),
                         ),
                       ],

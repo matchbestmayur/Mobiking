@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+// If you are completely replacing GoogleFonts, you might remove this.
+// However, if your AppTheme still uses GoogleFonts for its base styles, keep it.
+// import 'package:google_fonts/google_fonts.dart';
 import 'package:lottie/lottie.dart'; // For animations, make sure it's in your pubspec.yaml
 import 'package:get/get.dart'; // For using GetX themes if available, and snackbars.
 
-import '../../themes/app_theme.dart'; // Assuming your AppColors are defined here
+import '../../themes/app_theme.dart'; // Assuming your AppColors and TextTheme are defined here
 
 class NoNetworkScreen extends StatelessWidget {
   final VoidCallback onRetry;
@@ -17,6 +19,8 @@ class NoNetworkScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final TextTheme textTheme = Theme.of(context).textTheme; // Get TextTheme
+
     return Scaffold(
       backgroundColor: AppColors.neutralBackground, // Use your app's background color
       body: Center(
@@ -27,11 +31,8 @@ class NoNetworkScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               // Lottie Animation for network issue (like the coffee machine with ERR)
-              // You'll need to replace this with your specific Lottie asset.
               Lottie.asset(
                 'assets/animations/network_error.json', // Placeholder: Replace with your actual Lottie animation file
-                // A good resource for Lottie animations: https://lottiefiles.com/
-                // Search for "no internet", "offline", "error", etc.
                 width: 200,
                 height: 200,
                 fit: BoxFit.contain,
@@ -42,7 +43,7 @@ class NoNetworkScreen extends StatelessWidget {
                   return Icon(
                     Icons.cloud_off_rounded,
                     size: 150,
-                    color: AppColors.textLight.withOpacity(0.6),
+                    color: AppColors.textLight.withOpacity(0.6), // Use AppColors
                   );
                 },
               ),
@@ -51,10 +52,8 @@ class NoNetworkScreen extends StatelessWidget {
               Text(
                 message ?? 'Your internet is a little wonky', // Default or custom message
                 textAlign: TextAlign.center,
-                style: GoogleFonts.poppins(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textDark,
+                style: textTheme.headlineMedium?.copyWith( // Using headlineMedium
+                  color: AppColors.textDark, // Use AppColors
                 ),
               ),
               const SizedBox(height: 16),
@@ -62,9 +61,8 @@ class NoNetworkScreen extends StatelessWidget {
               Text(
                 'Try switching to a different connection or\nreset your internet to place an order.',
                 textAlign: TextAlign.center,
-                style: GoogleFonts.poppins(
-                  fontSize: 16,
-                  color: AppColors.textDark.withOpacity(0.7),
+                style: textTheme.bodyLarge?.copyWith( // Using bodyLarge
+                  color: AppColors.textDark.withOpacity(0.7), // Use AppColors
                 ),
               ),
               const SizedBox(height: 40), // Increased spacing
@@ -81,11 +79,9 @@ class NoNetworkScreen extends StatelessWidget {
                 ),
                 child: Text(
                   'RETRY',
-                  style: GoogleFonts.poppins(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
+                  style: textTheme.labelLarge?.copyWith( // Using labelLarge for button text
                     color: Colors.white,
-                    letterSpacing: 1.5, // Spacing for "RETRY"
+                    letterSpacing: 1.5, // Keep letter spacing for effect
                   ),
                 ),
               ),

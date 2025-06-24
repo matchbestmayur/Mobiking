@@ -1,14 +1,18 @@
+// lib/app/modules/Categories/SearchTabSliverAppBar.dart
+
+import 'dart:async'; // Import for Timer
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:google_fonts/google_fonts.dart'; // Still needed if other parts of your app use it
 import 'package:mobiking/app/controllers/sub_category_controller.dart';
 import 'package:mobiking/app/modules/search/SearchPage.dart';
-import 'package:mobiking/app/themes/app_theme.dart';
+import 'package:mobiking/app/themes/app_theme.dart'; // Import your AppTheme
 
- // Make sure this path is correct
+import '../controllers/tab_controller_getx.dart';
 import 'CategoryTab.dart'; // Assumed location of TabControllerGetX and CustomTabBarSection
 
-class SearchTabSliverAppBar extends StatelessWidget {
+// Convert SearchTabSliverAppBar to a StatefulWidget to manage the Timer
+class SearchTabSliverAppBar extends StatefulWidget {
   final TextEditingController? searchController;
   final void Function(String)? onSearchChanged;
 
@@ -19,12 +23,60 @@ class SearchTabSliverAppBar extends StatelessWidget {
   }) : super(key: key);
 
   @override
+  _SearchTabSliverAppBarState createState() => _SearchTabSliverAppBarState();
+}
+
+class _SearchTabSliverAppBarState extends State<SearchTabSliverAppBar> {
+  // List of hints to cycle through
+  final List<String> _hintTexts = [
+    'Search "20w bulb"',
+    'Search "LED strip lights"',
+    'Search "solar panel"',
+    'Search "smart plug"',
+    'Search "rechargeable battery"',
+  ];
+
+  // Observable for the current hint index
+  late final RxInt _currentHintIndex;
+  Timer? _hintTextTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentHintIndex = 0.obs; // Initialize RxInt here
+    _startHintTextAnimation();
+
+    // Ensure controllers are registered before usage
+    if (!Get.isRegistered<TabControllerGetX>()) {
+      Get.put(TabControllerGetX());
+    }
+    if (!Get.isRegistered<SubCategoryController>()) {
+      Get.put(SubCategoryController());
+    }
+  }
+
+  void _startHintTextAnimation() {
+    _hintTextTimer?.cancel(); // Cancel any existing timer
+    _hintTextTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
+      _currentHintIndex.value = (_currentHintIndex.value + 1) % _hintTexts.length;
+    });
+  }
+
+  @override
+  void dispose() {
+    _hintTextTimer?.cancel(); // Cancel the timer when the widget is disposed
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return SliverPersistentHeader(
       pinned: true,
       delegate: _StickySearchAndTabBarDelegate(
-        searchController: searchController,
-        onSearchChanged: onSearchChanged,
+        searchController: widget.searchController, // Access widget properties
+        onSearchChanged: widget.onSearchChanged, // Access widget properties
+        hintTexts: _hintTexts, // Pass the list of hints
+        currentHintIndex: _currentHintIndex, // Pass the observable index
       ),
     );
   }
@@ -34,99 +86,119 @@ class SearchTabSliverAppBar extends StatelessWidget {
 class _StickySearchAndTabBarDelegate extends SliverPersistentHeaderDelegate {
   final TextEditingController? searchController;
   final void Function(String)? onSearchChanged;
+  final List<String> hintTexts; // Now passed in
+  final RxInt currentHintIndex; // Now passed in
 
   _StickySearchAndTabBarDelegate({
     required this.searchController,
     required this.onSearchChanged,
+    required this.hintTexts,
+    required this.currentHintIndex,
   });
 
   @override
-  double get minExtent => 152; // Minimum height when collapsed
+  double get minExtent => 121; // Minimum height when collapsed
   @override
-  double get maxExtent => 152; // Fixed height to prevent expansion
+  double get maxExtent => 121; // Fixed height to prevent expansion
 
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    final tabController = Get.find<TabControllerGetX>();
-    final subCategoryController = Get.find<SubCategoryController>(); // Find the CategoryController instance
+    final TabControllerGetX tabController = Get.find<TabControllerGetX>();
+    final SubCategoryController subCategoryController = Get.find<SubCategoryController>();
+
+    // Retrieve the hint style from the AppTheme
+    final TextStyle? appThemeHintStyle = Theme.of(context).inputDecorationTheme.hintStyle;
 
     return Obx(() {
-      String? backgroundImage;
+      String? headerImageUrl;
       final int selectedIndex = tabController.selectedIndex.value;
 
       // Attempt to get the background image from the selected sub-category
       if (selectedIndex >= 0 && selectedIndex < subCategoryController.subCategories.length) {
         final currentSubCategory = subCategoryController.subCategories[selectedIndex];
-        if (currentSubCategory.products.isNotEmpty && currentSubCategory.products[0].images.isNotEmpty) {
-          backgroundImage = currentSubCategory.upperBanner;
+        // Check currentSubCategory.upperBanner instead of products/images if that's where the header image is
+        // Based on your original SubCategory dummy, it had 'upperBanner'
+        if (currentSubCategory.upperBanner != null && currentSubCategory.upperBanner!.isNotEmpty) {
+          headerImageUrl = currentSubCategory.upperBanner;
         }
       }
 
       return SafeArea(
-        top: false, // Prevents double padding, assuming your main app bar handles top inset
+        top: false, // You manage padding manually
         child: Container(
           decoration: BoxDecoration(
-            color: AppColors.darkPurple, // Fallback color if no image or during loading
-            image: backgroundImage != null
+            color: AppColors.darkPurple, // Default solid background color
+            image: headerImageUrl != null
                 ? DecorationImage(
-              image: NetworkImage(backgroundImage),
+              image: NetworkImage(headerImageUrl),
               fit: BoxFit.cover,
-              // Apply a color filter to darken the image for better text readability
               colorFilter: ColorFilter.mode(
-                Colors.black.withOpacity(0.4), // Adjust opacity as needed
+                Colors.black.withOpacity(0.4), // Darken the image
                 BlendMode.darken,
               ),
             )
-                : DecorationImage(image: NetworkImage("")),
+                : null, // If no image, just use the solid color
           ),
           child: Column(
             children: [
               // Search bar
               Padding(
-                // Adjusted top padding for more balanced spacing from the element above it
-                padding: const EdgeInsets.fromLTRB(18, 4, 18, 0),
-                child: ClipRRect( // Added ClipRRect to ensure the borderRadius is perfectly applied
-                  borderRadius: BorderRadius.circular(30), // Increased for a more pronounced pill shape (half of 50 height)
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(10), // Simpler way to set radius
                   child: Container(
-                    height: 45, // Slightly taller for better touch target and visual presence
+                    height: 48,
                     decoration: BoxDecoration(
-                      color: Colors.white,
-                      // The borderRadius here is technically redundant if ClipRRect is used,
-                      // but it's good practice to keep it for clarity and fallback.
-                      borderRadius: BorderRadius.circular(30),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.15), // Softer, yet more visible shadow
-                          blurRadius: 8, // Increased blur for a diffused shadow
-                          offset: const Offset(0, 4), // Deeper shadow
-                        ),
-                      ],
+                      color: AppColors.white,
+                      borderRadius: BorderRadius.circular(10),
                     ),
                     child: TextField(
                       controller: searchController,
-                      onChanged: onSearchChanged, // Will not be triggered by user typing due to readOnly
+                      onChanged: onSearchChanged,
                       onTap: () {
                         Get.to(
                               () => const SearchPage(),
-                          transition: Transition.fadeIn, // Smooth transition
+                          transition: Transition.rightToLeft,
                           duration: const Duration(milliseconds: 300),
                         );
                       },
-                      readOnly: true, // <--- This makes the TextField static (non-editable)
-                      // Use AppColors for text color and GoogleFonts for consistency
-                      style: GoogleFonts.poppins(fontSize: 15, color: AppColors.textDark),
-                      cursorColor: AppColors.primaryPurple, // Themed cursor color
+                      readOnly: true,
+                      // Apply the overall text style for entered text from AppTheme
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textDark) ??
+                          GoogleFonts.poppins(fontSize: 15, color: AppColors.textDark),
+                      cursorColor: AppColors.primaryGreen, // Changed to primaryGreen for consistency
                       decoration: InputDecoration(
-                        border: InputBorder.none, // Removed default TextField border for a cleaner look
-                        hintText: 'Search products, brands...',
-                        hintStyle: GoogleFonts.poppins(
-                          fontSize: 15, // Match input text size for consistency
-                          color: AppColors.textLight, // Lighter color for hint text
-                        ),
-                        prefixIcon: Icon(Icons.search_rounded, color: AppColors.textLight), // Themed search icon
-                        // Changed suffixIcon to a static navigation indicator
-                        suffixIcon: const Icon(Icons.keyboard_arrow_right_rounded, color: AppColors.textLight),
-                        // Adjusted content padding for better vertical alignment within the 50 height
+                        border: InputBorder.none,
+                        // Use the hint property with AnimatedSwitcher for animated text
+                        hint: Obx(() {
+                          return AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 500),
+                            transitionBuilder: (Widget child, Animation<double> animation) {
+                              final offsetAnimation = Tween<Offset>(
+                                begin: const Offset(0.0, 1.0), // Start from bottom
+                                end: Offset.zero, // End at current position
+                              ).animate(animation);
+
+                              return ClipRect(
+                                child: SlideTransition(
+                                  position: offsetAnimation,
+                                  child: FadeTransition(
+                                    opacity: animation,
+                                    child: child,
+                                  ),
+                                ),
+                              );
+                            },
+                            child: Text(
+                              hintTexts[currentHintIndex.value], // Use passed in data
+                              key: ValueKey<int>(currentHintIndex.value), // Important for AnimatedSwitcher
+                              // Apply the AppTheme's hint style
+                              style: appThemeHintStyle,
+                            ),
+                          );
+                        }),
+                        prefixIcon: const Icon(Icons.search, color: AppColors.textMedium),
+                        suffixIcon: const Icon(Icons.mic_none, color: AppColors.textMedium),
                         contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                       ),
                     ),
@@ -136,13 +208,12 @@ class _StickySearchAndTabBarDelegate extends SliverPersistentHeaderDelegate {
               const SizedBox(height: 4),
 
               // Tabs section
-              // The CustomTabBarSection will render on top of the background image.
-              // Ensure its background is transparent or semi-transparent if you want the image to show through.
-              // If it has its own opaque background, it will cover the image.
-              Container(
-                padding: const EdgeInsets.only(bottom: 8),
-                color: Colors.transparent, // Set to transparent to show the background image
-                child: CustomTabBarSection(),
+              Expanded( // Use Expanded to ensure CustomTabBarSection fills remaining space
+                child: Container(
+                  // Its background should be transparent so the parent Container's background (image or solid color) shows through.
+                  color: Colors.transparent,
+                  child: CustomTabBarSection(),
+                ),
               ),
             ],
           ),
@@ -153,9 +224,14 @@ class _StickySearchAndTabBarDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   bool shouldRebuild(covariant SliverPersistentHeaderDelegate oldDelegate) {
-    // Returning `false` is generally fine here because the `Obx` widget
-    // inside `build` handles reactive updates to the UI when the selectedIndex changes.
-    // The delegate's size or layout properties aren't changing, only its internal content.
-    return false;
+    // Rebuild if any of the passed-in properties change, or if it's a different delegate type.
+    // Also, since currentHintIndex is an RxInt, the Obx in build will handle its changes.
+    return oldDelegate.maxExtent != maxExtent ||
+        oldDelegate.minExtent != minExtent ||
+        (oldDelegate is _StickySearchAndTabBarDelegate &&
+            (oldDelegate.searchController != searchController ||
+                oldDelegate.onSearchChanged != onSearchChanged ||
+                oldDelegate.hintTexts != hintTexts ||
+                oldDelegate.currentHintIndex != currentHintIndex));
   }
 }
