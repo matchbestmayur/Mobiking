@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart' as dio;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // Import for SystemChrome and DeviceOrientation
 import 'package:get/get.dart';
@@ -43,10 +44,16 @@ Future<void> main() async {
 
   await GetStorage.init();
 
-  // Services
-  Get.put(LoginService());
+  // --- Core Services and Dependencies ---
+  final dioInstance = dio.Dio(); // Single Dio instance
+  final getStorageBox = GetStorage(); // Single GetStorage instance
+
+  // Put LoginService into GetX dependency injection
+  // It now requires the shared Dio instance and GetStorage box
+  Get.put(LoginService(dioInstance, getStorageBox));
+
   Get.put(OrderService());
-  Get.put(AddressService());
+  Get.put(AddressService(dioInstance, getStorageBox));
   Get.put(ConnectivityService()); // NEW: Initialize ConnectivityService
   Get.put(SoundService());
   Get.put(QueryService());

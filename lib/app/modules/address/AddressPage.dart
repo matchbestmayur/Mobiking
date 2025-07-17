@@ -1,16 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-// If you uncommented GoogleFonts in previous files, keep it. Otherwise, remove if all text is themed.
-// import 'package:google_fonts/google_fonts.dart';
-import 'package:mobiking/app/themes/app_theme.dart'; // Import your AppTheme and AppColors
+import 'package:mobiking/app/themes/app_theme.dart';
 
 import '../../controllers/address_controller.dart';
 import '../../data/AddressModel.dart';
 
 class AddressPage extends StatelessWidget {
   AddressPage({Key? key}) : super(key: key) {
-    // Only put the controller if it hasn't been put yet, to avoid re-creation
-    // if the page is popped and pushed again.
     if (!Get.isRegistered<AddressController>()) {
       Get.put(AddressController());
     }
@@ -22,39 +18,38 @@ class AddressPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final TextTheme textTheme = Theme.of(context).textTheme; // Get TextTheme
+    final TextTheme textTheme = Theme.of(context).textTheme;
 
     return Scaffold(
-      backgroundColor: AppColors.neutralBackground, // Consistent Blinkit-like background
+      backgroundColor: AppColors.neutralBackground,
       appBar: AppBar(
-        leading: IconButton( // Use IconButton for standard back arrow styling
+        leading: IconButton(
           onPressed: () => Get.back(),
-          icon: const Icon(Icons.arrow_back), // Standard back arrow
-          color: AppColors.textDark, // Dark icon for clear visibility
+          icon: const Icon(Icons.arrow_back),
+          color: AppColors.textDark,
         ),
-        automaticallyImplyLeading: false, // Explicitly set
-        title: Text(
-          'Manage Addresses',
-          style: textTheme.titleLarge?.copyWith( // Consistent AppBar title style
-            color: AppColors.textDark, // Dark text
-            fontWeight: FontWeight.w700, // Bold title
+        automaticallyImplyLeading: false,
+        title: Obx(() => Text( // Title changes based on form state
+          controller.isEditingMode ? 'Edit Address' : 'Manage Addresses',
+          style: textTheme.titleLarge?.copyWith(
+            color: AppColors.textDark,
+            fontWeight: FontWeight.w700,
           ),
-        ),
-        backgroundColor: AppColors.white, // White AppBar background
-        elevation: 0.5, // Subtle shadow for AppBar
+        )),
+        backgroundColor: AppColors.white,
+        elevation: 0.5,
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked, // Center the FAB at the bottom
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       floatingActionButton: Obx(() {
-        if (!controller.isAddingAddress.value && !controller.isLoading.value) {
-          // Changed to a full-width, bottom-docked button for adding address
+        if (!controller.isFormOpen && !controller.isLoading.value) { // Show FAB only when form is NOT open and not loading
           return Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
             child: SizedBox(
               width: double.infinity,
-              height: 54, // Consistent button height
+              height: 54,
               child: ElevatedButton.icon(
                 onPressed: () {
-                  controller.isAddingAddress.value = true;
+                  controller.startAddingAddress(); // Call the new method to start adding
                 },
                 icon: const Icon(Icons.add, color: AppColors.white),
                 label: Text(
@@ -65,32 +60,32 @@ class AddressPage extends StatelessWidget {
                   ),
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryGreen, // Blinkit green for primary action
+                  backgroundColor: AppColors.primaryGreen,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12), // Rounded corners for button
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  elevation: 4, // Subtle shadow
+                  elevation: 4,
                 ),
               ),
             ),
           );
         } else {
-          return const SizedBox.shrink(); // Hide FAB when form is open or loading
+          return const SizedBox.shrink();
         }
       }),
       body: Obx(() {
-        if (controller.isAddingAddress.value) {
+        if (controller.isFormOpen) { // Check if any form (add or edit) is open
           return _buildForm(context);
         } else if (controller.isLoading.value && controller.addresses.isEmpty) {
           return Center(
-            child: CircularProgressIndicator(color: AppColors.primaryGreen), // Blinkit green loader
+            child: CircularProgressIndicator(color: AppColors.primaryGreen),
           );
         } else if (controller.addresses.isEmpty) {
           return RefreshIndicator(
             onRefresh: () async {
               await controller.fetchAddresses();
             },
-            color: AppColors.primaryGreen, // Refresh indicator in Blinkit green
+            color: AppColors.primaryGreen,
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
               child: SizedBox(
@@ -105,17 +100,17 @@ class AddressPage extends StatelessWidget {
                       Icon(
                         Icons.location_off_outlined,
                         size: 60,
-                        color: AppColors.textLight.withOpacity(0.6), // Subtle icon
+                        color: AppColors.textLight.withOpacity(0.6),
                       ),
                       const SizedBox(height: 16),
                       Text(
                         'No addresses found.',
-                        style: textTheme.headlineSmall?.copyWith(color: AppColors.textMedium), // Softer text
+                        style: textTheme.headlineSmall?.copyWith(color: AppColors.textMedium),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Tap "Add New Address" below to get started!', // Updated message
+                        'Tap "Add New Address" below to get started!',
                         textAlign: TextAlign.center,
                         style: textTheme.bodyMedium?.copyWith(color: AppColors.textLight),
                       ),
@@ -135,35 +130,40 @@ class AddressPage extends StatelessWidget {
   Widget _buildAddressList(BuildContext context) {
     final TextTheme textTheme = Theme.of(context).textTheme;
 
+    // Calculate bottom padding based on FAB height + its vertical padding (8.0 * 2)
+    const double fabTotalHeight = 54.0 + (8.0 * 2);
+    const double extraBottomPadding = 20.0;
+    const double totalBottomPadding = fabTotalHeight + extraBottomPadding;
+
     return RefreshIndicator(
       onRefresh: () async {
         await controller.fetchAddresses();
       },
-      color: AppColors.primaryGreen, // Refresh indicator in Blinkit green
+      color: AppColors.primaryGreen,
       child: ListView.separated(
-        padding: const EdgeInsets.all(16), // Padding around the list
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, totalBottomPadding),
         itemCount: controller.addresses.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 12), // Space between cards
+        separatorBuilder: (_, __) => const SizedBox(height: 12),
         itemBuilder: (_, index) {
           final AddressModel addr = controller.addresses[index];
           final bool isSelected = controller.selectedAddress.value?.id == addr.id;
 
-          return InkWell( // Use InkWell for better tap feedback on cards
+          return InkWell(
             onTap: () {
               controller.selectAddress(addr);
-              Get.back(); // Pop back to previous screen (e.g., Checkout)
+              Get.back();
             },
             borderRadius: BorderRadius.circular(12),
-            child: Container( // Use Container instead of Card for precise decoration
+            child: Container(
               decoration: BoxDecoration(
-                color: AppColors.white, // White background for the card
+                color: AppColors.white,
                 borderRadius: BorderRadius.circular(12),
                 border: isSelected
-                    ? Border.all(color: AppColors.primaryGreen, width: 2.0) // Green border if selected
-                    : Border.all(color: AppColors.neutralBackground, width: 1.0), // Subtle border
+                    ? Border.all(color: AppColors.primaryGreen, width: 2.0)
+                    : Border.all(color: AppColors.neutralBackground, width: 1.0),
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.textDark.withOpacity(isSelected ? 0.1 : 0.05), // Slightly more shadow if selected
+                    color: AppColors.textDark.withOpacity(isSelected ? 0.1 : 0.05),
                     blurRadius: 8,
                     offset: const Offset(0, 4),
                   ),
@@ -177,51 +177,75 @@ class AddressPage extends StatelessWidget {
                     children: [
                       Text(
                         '${_getEmojiForLabel(addr.label)} ${addr.label}',
-                        style: textTheme.titleMedium?.copyWith( // Consistent title for label
+                        style: textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w700,
-                          color: AppColors.textDark, // Dark text
+                          color: AppColors.textDark,
                         ),
                       ),
-                      const SizedBox(height: 8), // Adjusted spacing
+                      const SizedBox(height: 8),
                       Text(
                         addr.street,
-                        style: textTheme.bodyLarge?.copyWith(color: AppColors.textMedium, height: 1.4), // BodyLarge for street
+                        style: textTheme.bodyLarge?.copyWith(color: AppColors.textMedium, height: 1.4),
                       ),
                       Text(
                         '${addr.city}, ${addr.state} - ${addr.pinCode}',
-                        style: textTheme.bodyLarge?.copyWith(color: AppColors.textMedium, height: 1.4), // BodyLarge for city/state/pin
+                        style: textTheme.bodyLarge?.copyWith(color: AppColors.textMedium, height: 1.4),
                       ),
                     ],
                   ),
                   if (isSelected)
                     Positioned(
-                      top: 0, // Align with top of content
-                      right: 0, // Align with right of content
-                      child: Icon(Icons.check_circle_rounded, color: AppColors.primaryGreen, size: 28), // Green checkmark
+                      top: 0,
+                      right: 0,
+                      child: Icon(Icons.check_circle_rounded, color: AppColors.primaryGreen, size: 28),
                     ),
-                  // Option to Edit/Delete - common in Blinkit (though not explicitly requested, good UX)
                   Positioned(
                     bottom: 0,
                     right: 0,
                     child: Row(
                       children: [
-                        // Edit Button (Optional: Implement edit functionality)
+                        // Edit Button: Calls controller.startEditingAddress
                         IconButton(
                           icon: Icon(Icons.edit, color: AppColors.textLight, size: 20),
                           onPressed: () {
-                            // controller.editAddress(addr); // Call your edit method
-                            Get.snackbar('Edit Address', 'Implement address edit functionality.', snackPosition: SnackPosition.BOTTOM);
+                            controller.startEditingAddress(addr); // Call the new method
                           },
                           padding: EdgeInsets.zero,
                           constraints: BoxConstraints(),
                         ),
                         const SizedBox(width: 8),
-                        // Delete Button (Optional: Implement delete functionality)
+                        // Delete Button
                         IconButton(
                           icon: Icon(Icons.delete, color: AppColors.danger, size: 20),
-                          onPressed: () {
-                            // controller.deleteAddress(addr.id); // Call your delete method
-                            Get.snackbar('Delete Address', 'Implement address delete functionality.', snackPosition: SnackPosition.BOTTOM);
+                          onPressed: () async {
+                            if (addr.id != null) {
+                              final bool confirmed = await Get.dialog<bool>(
+                                AlertDialog(
+                                  title: Text('Delete Address', style: textTheme.titleLarge),
+                                  content: Text('Are you sure you want to delete this address?', style: textTheme.bodyMedium),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Get.back(result: false),
+                                      child: Text('Cancel', style: textTheme.labelLarge?.copyWith(color: AppColors.textMedium)),
+                                    ),
+                                    ElevatedButton(
+                                      onPressed: () => Get.back(result: true),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: AppColors.danger,
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                      ),
+                                      child: Text('Delete', style: textTheme.labelLarge?.copyWith(color: AppColors.white)),
+                                    ),
+                                  ],
+                                ),
+                              ) ?? false;
+
+                              if (confirmed) {
+                                await controller.deleteAddress(addr.id!);
+                              }
+                            } else {
+                              Get.snackbar('Error', 'Address ID is missing, cannot delete.', snackPosition: SnackPosition.BOTTOM, backgroundColor: AppColors.danger);
+                            }
                           },
                           padding: EdgeInsets.zero,
                           constraints: BoxConstraints(),
@@ -287,14 +311,14 @@ class AddressPage extends StatelessWidget {
               controller: controller.pinCodeController,
               validator: (val) {
                 if (val == null || val.trim().isEmpty) return 'PIN code is required';
-                if (!RegExp(r'^\d{4,10}$').hasMatch(val.trim())) return 'Invalid PIN code (4-10 digits)'; // More precise message
+                if (!RegExp(r'^\d{4,10}$').hasMatch(val.trim())) return 'Invalid PIN code (4-10 digits)';
                 return null;
               },
             ),
             const SizedBox(height: 24),
             Obx(() {
               return Column(
-                crossAxisAlignment: CrossAxisAlignment.start, // Align "Address Type" label to start
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Padding(
                     padding: const EdgeInsets.only(bottom: 8.0),
@@ -307,7 +331,7 @@ class AddressPage extends StatelessWidget {
                     ),
                   ),
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly, // Distribute evenly
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: ['Home', 'Work', 'Other'].map((label) {
                       final isSelected = controller.selectedLabel.value == label;
                       return ChoiceChip(
@@ -317,19 +341,19 @@ class AddressPage extends StatelessWidget {
                           if (selected) controller.selectedLabel.value = label;
                         },
                         labelStyle: textTheme.labelMedium?.copyWith(
-                            color: isSelected ? AppColors.white : AppColors.textDark, // Dark text when not selected
-                            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500), // Bolder when selected
-                        backgroundColor: AppColors.neutralBackground, // Light grey for unselected
-                        selectedColor: AppColors.primaryGreen, // Blinkit green for selected
-                        shape: RoundedRectangleBorder( // Rounded rectangle shape
+                            color: isSelected ? AppColors.white : AppColors.textDark,
+                            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500),
+                        backgroundColor: AppColors.neutralBackground,
+                        selectedColor: AppColors.primaryGreen,
+                        shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                           side: BorderSide(
-                            color: isSelected ? AppColors.primaryGreen : AppColors.textLight.withOpacity(0.5), // Themed border
+                            color: isSelected ? AppColors.primaryGreen : AppColors.textLight.withOpacity(0.5),
                             width: isSelected ? 1.5 : 1.0,
                           ),
                         ),
-                        elevation: 0, // No elevation for chips
-                        pressElevation: 0, // No press elevation
+                        elevation: 0,
+                        pressElevation: 0,
                       );
                     }).toList(),
                   ),
@@ -348,7 +372,7 @@ class AddressPage extends StatelessWidget {
             const SizedBox(height: 32),
             SizedBox(
               width: double.infinity,
-              height: 54, // Consistent button height
+              height: 54,
               child: Obx(() => ElevatedButton.icon(
                 icon: controller.isLoading.value
                     ? const SizedBox(
@@ -359,52 +383,40 @@ class AddressPage extends StatelessWidget {
                     strokeWidth: 2,
                   ),
                 )
-                    : const Icon(Icons.save, color: AppColors.white), // Standard save icon
+                    : Icon(
+                  controller.isEditingMode ? Icons.update : Icons.save, // Icon changes based on mode
+                  color: AppColors.white,
+                ),
                 onPressed: controller.isLoading.value
                     ? null
                     : () async {
                   if (_formKey.currentState!.validate()) {
-                    final success = await controller.addAddress();
+                    final success = await controller.saveAddress(); // Call saveAddress
                     if (success) {
-                      Get.snackbar(
-                        'Success',
-                        'Address saved successfully!',
-                        snackPosition: SnackPosition.BOTTOM,
-                        backgroundColor: AppColors.success,
-                        colorText: AppColors.white,
-                        margin: const EdgeInsets.all(10), // Consistent margin
-                        borderRadius: 10,
-                      );
-                      controller.isAddingAddress.value = false;
-                      controller.clearForm();
-                      // Refresh list after adding
-                      controller.fetchAddresses();
+                      // Snackbar logic moved to controller for consistency, but you can keep here too if needed
+                      // For now, let controller handle its own snackbars for success/failure
+                      // and then refresh
+                      // controller.fetchAddresses(); // Called by controller.saveAddress now
                     } else {
-                      Get.snackbar(
-                        'Error',
-                        'Failed to save address. Please try again.',
-                        snackPosition: SnackPosition.BOTTOM,
-                        backgroundColor: AppColors.danger,
-                        colorText: AppColors.white,
-                        margin: const EdgeInsets.all(10), // Consistent margin
-                        borderRadius: 10,
-                      );
+                      // Controller should have already shown an error snackbar
                     }
                   }
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryGreen, // Blinkit green for save
-                  disabledBackgroundColor: AppColors.lightGreen.withOpacity(0.5), // Lighter disabled color
+                  backgroundColor: AppColors.primaryGreen,
+                  disabledBackgroundColor: AppColors.lightGreen.withOpacity(0.5),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  elevation: 4, // Subtle shadow
+                  elevation: 4,
                 ),
                 label: Text(
-                  controller.isLoading.value ? "Saving..." : "Save Address",
+                  controller.isLoading.value
+                      ? (controller.isEditingMode ? "Updating..." : "Saving...")
+                      : (controller.isEditingMode ? "Update Address" : "Save Address"), // Label changes
                   style: textTheme.labelLarge?.copyWith(
                     color: AppColors.white,
-                    fontWeight: FontWeight.w700, // Bolder text
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               )),
@@ -414,16 +426,15 @@ class AddressPage extends StatelessWidget {
               onPressed: controller.isLoading.value
                   ? null
                   : () {
-                controller.isAddingAddress.value = false;
-                controller.clearForm();
+                controller.cancelEditing(); // Call cancelEditing
               },
               child: Text(
                 'Cancel',
                 style: textTheme.labelLarge?.copyWith(
-                    color: AppColors.textMedium, fontWeight: FontWeight.w600), // Medium grey for cancel
+                    color: AppColors.textMedium, fontWeight: FontWeight.w600),
               ),
             ),
-            const SizedBox(height: 20), // Bottom padding for scroll view
+            const SizedBox(height: 20),
           ],
         ),
       ),
@@ -443,33 +454,33 @@ class AddressPage extends StatelessWidget {
       controller: controller,
       keyboardType: keyboardType,
       validator: validator,
-      style: textTheme.bodyLarge?.copyWith(color: AppColors.textDark), // Input text style
+      style: textTheme.bodyLarge?.copyWith(color: AppColors.textDark),
       decoration: InputDecoration(
         labelText: label,
         labelStyle: textTheme.bodyMedium?.copyWith(
           fontWeight: FontWeight.w500,
-          color: AppColors.textMedium, // Label color
+          color: AppColors.textMedium,
         ),
         filled: true,
-        fillColor: AppColors.white, // White fill for text field
+        fillColor: AppColors.white,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        border: OutlineInputBorder( // Default border
-          borderSide: BorderSide(color: AppColors.neutralBackground), // Subtle grey border
-          borderRadius: BorderRadius.circular(8), // Slightly less rounded for text fields
-        ),
-        enabledBorder: OutlineInputBorder( // Enabled state border
+        border: OutlineInputBorder(
           borderSide: BorderSide(color: AppColors.neutralBackground),
           borderRadius: BorderRadius.circular(8),
         ),
-        focusedBorder: OutlineInputBorder( // Focused state border
-          borderSide: BorderSide(color: AppColors.primaryGreen, width: 2), // Green focus border
+        enabledBorder: OutlineInputBorder(
+          borderSide: BorderSide(color: AppColors.neutralBackground),
           borderRadius: BorderRadius.circular(8),
         ),
-        errorBorder: OutlineInputBorder( // Error state border
-          borderSide: BorderSide(color: AppColors.danger, width: 1.5), // Red error border
+        focusedBorder: OutlineInputBorder(
+          borderSide: BorderSide(color: AppColors.primaryGreen, width: 2),
           borderRadius: BorderRadius.circular(8),
         ),
-        focusedErrorBorder: OutlineInputBorder( // Focused error state border
+        errorBorder: OutlineInputBorder(
+          borderSide: BorderSide(color: AppColors.danger, width: 1.5),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
           borderSide: BorderSide(color: AppColors.danger, width: 2),
           borderRadius: BorderRadius.circular(8),
         ),
