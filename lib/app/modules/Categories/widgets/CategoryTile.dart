@@ -34,7 +34,7 @@ class CategoryTile extends StatelessWidget {
                 imageUrl,
                 width: 80, // Slightly smaller than container width
                 height: 80, // Fixed height for image
-                fit: BoxFit.cover,
+                fit: BoxFit.fill,
                 errorBuilder: (context, error, stackTrace) => Container(
                   width: 80,
                   height: 80,

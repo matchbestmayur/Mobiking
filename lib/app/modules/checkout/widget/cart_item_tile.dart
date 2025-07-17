@@ -34,8 +34,8 @@ class CartItemTile extends StatelessWidget {
     // Logic to find price and stock for the given variantName
     final productVariant = product.variants[variantName];
 
-      displayPrice = product.sellingPrice[0].price!.toDouble();
-      variantStock = product.totalStock; // Fallback to total stock if variant stock not specific
+    displayPrice = product.sellingPrice[0].price!.toDouble();
+    variantStock = product.totalStock; // Fallback to total stock if variant stock not specific
 
 
     // Determine the primary image URL
@@ -135,7 +135,10 @@ class CartItemTile extends StatelessWidget {
                 child: Obx(
                       () {
                     final bool isLoading = cartController.isLoading.value;
-                    final bool isDecrementDisabled = isLoading || quantity <= 1; // Disable decrement if quantity is 1
+                    // --- THE ONLY CHANGE IS HERE ---
+                    // Allow decrement when quantity is 1 (to trigger removal)
+                    final bool isDecrementDisabled = isLoading || quantity < 1;
+                    // --- END OF CHANGE ---
                     final bool isIncrementDisabled = isLoading || (variantStock != null && quantity >= variantStock!);
 
                     return Container(
@@ -162,7 +165,8 @@ class CartItemTile extends StatelessWidget {
                               );
                             },
                             isDisabled: isDecrementDisabled,
-                            isLoading: isLoading && quantity <= 1, // Only show loading if decreasing to 0
+                            // This part of isLoading logic remains as per your original code
+                            isLoading: isLoading && quantity <= 1,
                           ),
                           const SizedBox(width: 8), // Smaller space between buttons and quantity
                           // Quantity Text
@@ -181,26 +185,15 @@ class CartItemTile extends StatelessWidget {
                             onTap: isIncrementDisabled
                                 ? null
                                 : () {
-                              if (variantStock == null || quantity < variantStock!) {
-                                cartController.addToCart(
-                                  productId: product.id!,
-                                  variantName: variantName,
-                                );
-                              } else {
-                                Get.snackbar(
-                                  'Out of Stock',
-                                  'Maximum quantity reached for this variant or it is out of stock.',
-                                  snackPosition: SnackPosition.BOTTOM,
-                                  backgroundColor: AppColors.danger.withOpacity(0.8),
-                                  colorText: AppColors.white,
-                                  icon: const Icon(Icons.warning, color: AppColors.white),
-                                  margin: const EdgeInsets.all(10),
-                                  borderRadius: 10,
-                                );
-                              }
+                              // Removed Get.snackbar from here as requested
+                              cartController.addToCart(
+                                productId: product.id!,
+                                variantName: variantName,
+                              );
                             },
                             isDisabled: isIncrementDisabled,
-                            isLoading: isLoading && (variantStock == null || quantity < variantStock!), // Show loading if valid increment
+                            // This part of isLoading logic remains as per your original code
+                            isLoading: isLoading && (variantStock == null || quantity < variantStock!),
                           ),
                         ],
                       ),
@@ -224,8 +217,8 @@ class CartItemTile extends StatelessWidget {
     required bool isLoading, // Added isLoading flag for individual button state
   }) {
     // Determine button color based on disabled state and theme
-    final Color buttonColor = isDisabled ? AppColors.success : AppColors.success;
-    final Color iconColor = isDisabled ? AppColors.textLight : AppColors.white; // White icon on active, light grey on disabled
+    final Color buttonColor = isDisabled ? AppColors.success.withOpacity(0.5) : AppColors.success;
+    final Color iconColor = isDisabled ? AppColors.textLight.withOpacity(0.7) : AppColors.white; // White icon on active, light grey on disabled
 
     return GestureDetector(
       onTap: onTap,

@@ -2,16 +2,28 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../data/AddressModel.dart';
-import '../services/AddressService.dart'; // Assume this path is correct
+import '../services/AddressService.dart';
+import 'package:collection/collection.dart'; // For firstWhereOrNull
 
 class AddressController extends GetxController {
-  final AddressService _addressService = Get.find<AddressService>(); // Use Get.find for existing service if already put
+  final AddressService _addressService = Get.find<AddressService>();
 
   final RxList<AddressModel> addresses = <AddressModel>[].obs;
   final Rx<AddressModel?> selectedAddress = Rx<AddressModel?>(null);
-  final RxBool isAddingAddress = false.obs;
+
+  // Form State management
+  final RxBool _isAddingAddress = false.obs; // True when form is open for ADD
+  final RxBool _isEditing = false.obs; // True when form is open for EDIT
+  final Rx<AddressModel?> _addressBeingEdited = Rx<AddressModel?>(null); // Holds the address being edited
+
+  // Combined form visibility state
+  bool get isFormOpen => _isAddingAddress.value || _isEditing.value;
+  // Expose specific states for UI decisions if needed
+  bool get isAddingMode => _isAddingAddress.value;
+  bool get isEditingMode => _isEditing.value;
+
   final RxBool isLoading = false.obs;
-  final RxString addressErrorMessage = ''.obs; // Added for general address errors
+  final RxString addressErrorMessage = ''.obs;
 
   final TextEditingController streetController = TextEditingController();
   final TextEditingController cityController = TextEditingController();
@@ -34,6 +46,7 @@ class AddressController extends GetxController {
     stateController.dispose();
     pinCodeController.dispose();
     customLabelController.dispose();
+    // Removed _refreshTokenTimer?.cancel(); as it's not present in this controller anymore
     super.onClose();
   }
 
@@ -43,19 +56,33 @@ class AddressController extends GetxController {
 
   Future<void> fetchAddresses() async {
     isLoading.value = true;
-    addressErrorMessage.value = ''; // Clear previous errors
+    addressErrorMessage.value = '';
     try {
       final fetchedList = await _addressService.fetchUserAddresses();
       addresses.assignAll(fetchedList);
-      if (addresses.isNotEmpty && selectedAddress.value == null) {
-        selectedAddress.value = addresses.first; // Select the first address by default if none selected
+      if (addresses.isNotEmpty) {
+        // If no address is selected or the previously selected address was deleted
+        if (selectedAddress.value == null || !addresses.contains(selectedAddress.value)) {
+          selectedAddress.value = addresses.first;
+        }
+      } else {
+        selectedAddress.value = null; // No addresses, so clear selection
       }
-    } catch (e) {
+    } on AddressServiceException catch (e) {
       print('AddressController: Error fetching addresses: $e');
-      addressErrorMessage.value = 'Could not load addresses. Please try again.';
+      addressErrorMessage.value = e.message;
       _showSnackbar(
         'Fetch Failed',
-        'Could not load addresses. Please try again.',
+        e.message,
+        Colors.red,
+        Icons.cloud_off_outlined,
+      );
+    } catch (e) {
+      print('AddressController: Unexpected error fetching addresses: $e');
+      addressErrorMessage.value = 'An unexpected error occurred while fetching addresses.';
+      _showSnackbar(
+        'Error',
+        'An unexpected error occurred while fetching addresses.',
         Colors.red,
         Icons.cloud_off_outlined,
       );
@@ -64,16 +91,39 @@ class AddressController extends GetxController {
     }
   }
 
-  Future<bool> addAddress() async {
-    isLoading.value = true; // Set loading true at the start
-    addressErrorMessage.value = ''; // Clear previous errors
+  // New method to initiate editing an address
+  void startEditingAddress(AddressModel address) {
+    _isEditing.value = true;
+    _isAddingAddress.value = false; // Ensure adding mode is off
+    _addressBeingEdited.value = address;
+
+    // Populate form fields with existing address data
+    streetController.text = address.street;
+    cityController.text = address.city;
+    stateController.text = address.state;
+    pinCodeController.text = address.pinCode;
+
+    // Set selectedLabel based on address label
+    if (['Home', 'Work'].contains(address.label)) {
+      selectedLabel.value = address.label;
+      customLabelController.clear(); // Clear custom label if standard
+    } else {
+      selectedLabel.value = 'Other';
+      customLabelController.text = address.label; // Populate custom label
+    }
+  }
+
+  // Method to handle saving (both add and update)
+  Future<bool> saveAddress() async {
+    isLoading.value = true;
+    addressErrorMessage.value = '';
     try {
       String finalLabel = selectedLabel.value;
       if (selectedLabel.value == 'Other') {
         finalLabel = customLabelController.text.trim();
       }
 
-      // --- Validation Checks - Return immediately if failed ---
+      // --- Validation Checks ---
       if (finalLabel.isEmpty) {
         _showSnackbar(
           'Input Required',
@@ -81,7 +131,8 @@ class AddressController extends GetxController {
           Colors.amber,
           Icons.label_important_outline,
         );
-        return false; // Exit function immediately
+        isLoading.value = false;
+        return false;
       }
 
       if (streetController.text.trim().isEmpty ||
@@ -94,11 +145,12 @@ class AddressController extends GetxController {
           Colors.amber,
           Icons.edit_road_outlined,
         );
-        return false; // Exit function immediately
+        isLoading.value = false;
+        return false;
       }
 
-      // --- Proceed with adding address if validation passes ---
-      final newAddressData = AddressModel(
+      final AddressModel addressToSave = AddressModel(
+        id: _addressBeingEdited.value?.id, // Include ID if editing
         label: finalLabel,
         street: streetController.text.trim(),
         city: cityController.text.trim(),
@@ -106,41 +158,145 @@ class AddressController extends GetxController {
         pinCode: pinCodeController.text.trim(),
       );
 
-      final addedAddress = await _addressService.addAddress(newAddressData);
-
-      if (addedAddress != null) {
-        // If execution reaches here, it means the service call succeeded and returned a non-null address.
-        addresses.add(addedAddress); // Add to observable list
-        isAddingAddress.value = false; // Reset adding state
-        clearForm(); // Clear form fields
-        _showSnackbar(
-          'Success!',
-          'Your new address "${addedAddress.label}" has been added.',
-          Colors.green,
-          Icons.location_on_outlined,
-        );
-        return true; // Indicate success
+      AddressModel? resultAddress;
+      if (_isEditing.value) {
+        // Perform update
+        if (addressToSave.id == null) {
+          throw AddressServiceException('Address ID is missing for update operation.');
+        }
+        resultAddress = await _addressService.updateAddress(addressToSave.id!, addressToSave);
       } else {
-        // If addedAddress is null, it means AddressService already showed a snackbar
-        // or handled the error, so we just return false.
-        addressErrorMessage.value = 'Failed to add address.';
-        return false; // Indicate failure
+        // Perform add
+        resultAddress = await _addressService.addAddress(addressToSave);
       }
+
+      if (resultAddress != null) {
+        // Update the observable list. For update, replace; for add, add.
+        if (_isEditing.value) {
+          final int index = addresses.indexWhere((addr) => addr.id == resultAddress!.id);
+          if (index != -1) {
+            addresses[index] = resultAddress;
+          }
+          // If the updated address was selected, ensure selectedAddress points to the new object
+          if (selectedAddress.value?.id == resultAddress.id) {
+            selectedAddress.value = resultAddress;
+          }
+          _showSnackbar(
+            'Success!',
+            'Address "${resultAddress.label}" updated successfully.',
+            Colors.green,
+            Icons.check_circle_outline,
+          );
+        } else {
+          addresses.add(resultAddress);
+          _showSnackbar(
+            'Success!',
+            'Your new address "${resultAddress.label}" has been added.',
+            Colors.green,
+            Icons.location_on_outlined,
+          );
+          // Select newly added address if it's the first or user preference
+          if (addresses.length == 1 && selectedAddress.value == null) {
+            selectedAddress.value = resultAddress;
+          }
+        }
+        cancelEditing(); // Reset form state
+        return true;
+      } else {
+        addressErrorMessage.value = 'Operation failed due to unexpected response.';
+        return false;
+      }
+    } on AddressServiceException catch (e) {
+      print('AddressController: Error saving address: $e');
+      addressErrorMessage.value = e.message;
+      _showSnackbar(
+        _isEditing.value ? 'Update Failed' : 'Add Failed',
+        e.message,
+        Colors.red,
+        Icons.error_outline,
+      );
+      return false;
     } catch (e) {
-      // All errors (network, API errors, unhandled exceptions) will land here.
-      print('AddressController: Error adding address: $e');
-      addressErrorMessage.value = 'Failed to add address. Please check your internet or try again later.';
+      print('AddressController: Unexpected error saving address: $e');
+      addressErrorMessage.value = 'An unexpected error occurred. Please try again later.';
       _showSnackbar(
         'Error',
-        'Failed to add address. Please check your internet or try again later.',
+        'An unexpected error occurred. Please try again later.',
         Colors.red,
         Icons.cloud_off_outlined,
       );
-      return false; // Indicate failure
+      return false;
     } finally {
-      // Ensure loading state is always reset regardless of success or failure
       isLoading.value = false;
     }
+  }
+
+  /// Deletes an address from the user's list and the backend.
+  /// Returns `true` if deletion was successful, `false` otherwise.
+  Future<bool> deleteAddress(String addressId) async {
+    isLoading.value = true;
+    addressErrorMessage.value = ''; // Clear previous errors
+    try {
+      final bool success = await _addressService.deleteAddress(addressId);
+
+      if (success) {
+        // Remove the address from the local RxList
+        addresses.removeWhere((address) => address.id == addressId);
+
+        // If the deleted address was the currently selected one,
+        // clear the selection or select another address.
+        if (selectedAddress.value?.id == addressId) {
+          selectedAddress.value = addresses.isNotEmpty ? addresses.first : null;
+        }
+
+        _showSnackbar(
+          'Deleted!',
+          'Address removed successfully.',
+          Colors.green,
+          Icons.delete_forever_outlined,
+        );
+        return true;
+      }
+      return false; // Should not be reached if success is true, but good practice
+    } on AddressServiceException catch (e) { // Catch specific service exceptions first
+      print('AddressController: Error deleting address: $e');
+      addressErrorMessage.value = e.message;
+      _showSnackbar(
+        'Deletion Failed',
+        e.message,
+        Colors.red,
+        Icons.error_outline,
+      );
+      return false;
+    } catch (e) { // Catch any other unexpected exceptions
+      print('AddressController: Unexpected error deleting address: $e');
+      addressErrorMessage.value = 'An unexpected error occurred while deleting address.';
+      _showSnackbar(
+        'Error',
+        'An unexpected error occurred while deleting address.',
+        Colors.red,
+        Icons.cloud_off_outlined,
+      );
+      return false;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  // Method to open the add form (sets _isAddingAddress to true)
+  void startAddingAddress() {
+    clearForm(); // Clear form for new entry
+    _isAddingAddress.value = true;
+    _isEditing.value = false;
+    _addressBeingEdited.value = null;
+  }
+
+  // Method to cancel editing/adding and go back to list view
+  void cancelEditing() {
+    _isAddingAddress.value = false;
+    _isEditing.value = false;
+    _addressBeingEdited.value = null;
+    clearForm();
   }
 
   void clearForm() {
@@ -164,7 +320,7 @@ class AddressController extends GetxController {
       margin: const EdgeInsets.all(10),
       borderRadius: 10,
       animationDuration: const Duration(milliseconds: 300),
-      duration: const Duration(seconds: 3), // Standard duration for all snackbars
+      duration: const Duration(seconds: 3),
     );
   }
 }
